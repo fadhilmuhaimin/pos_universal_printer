@@ -21,5 +21,5 @@ Plugin Flutter federated untuk mencetak struk kasir dan label menggunakan berbag
        sdk: flutter
      pos_universal_printer:
        git:
-         url: https://github.com/<username>/pos_universal_printer.git
+         url: https://github.com/fadhilmuhaimin/pos_universal_printer.git
          path: packages/pos_universal_printer
