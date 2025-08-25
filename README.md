@@ -1,22 +1,25 @@
 # pos_universal_printer
 
-Plugin Flutter federated untuk mencetak struk dan label melalui berbagai jenis printer kasir.
+Plugin Flutter federated untuk mencetak struk kasir dan label menggunakan berbagai jenis printer thermal. Mendukung perintah ESC/POS untuk printer kasir, serta TSPL dan CPCL untuk printer label. Plugin ini memisahkan logika inti (Dart) dan implementasi platform (Android/iOS) sehingga mudah dipelihara dan dikembangkan.
 
-## Fitur
+## Fitur Utama
 
-- Pencetakan ESC/POS: teks, align, bold, barcode, QR, raster, potong kertas, dan buka laci.
-- Pencetakan label TSPL (TSC/Argox) dan CPCL (Zebra).
-- Koneksi Bluetooth Classic (Android) dan TCP/IP (Android & iOS).
-- Antrian kerja per peran (kasir, dapur, stiker) dengan retry otomatis.
-- Logging terstruktur dengan ring buffer dan streaming ke UI.
+- **ESC/POS**: mencetak teks, mengatur alignment, menebalkan huruf, barcode, QR code, raster image, memotong kertas, dan membuka laci kasir.
+- **TSPL & CPCL**: membangun label untuk printer TSC/Argox (TSPL) dan Zebra (CPCL).
+- **Multi-peran**: dukungan untuk beberapa printer (kasir, dapur, stiker) dengan antrian peran terpisah dan retry otomatis.
+- **Koneksi**: Bluetooth Classic (hanya Android) dan TCP/IP (Android & iOS).
+- **Logging**: ring buffer log dan streaming perubahan log ke UI.
 
 ## Instalasi
 
-Tambahkan dependensi berikut di `pubspec.yaml` proyek Anda:
+1. Pastikan Anda sudah menginisialisasi dependensi Flutter di proyek Anda.
+2. Tambahkan plugin ini dari GitHub di `pubspec.yaml` aplikasi Anda:
 
-```yaml
-dependencies:
-  pos_universal_printer:
-    git:
-      url: https://github.com/<username>/pos_universal_printer.git
-      path: packages/pos_universal_printer
+   ```yaml
+   dependencies:
+     flutter:
+       sdk: flutter
+     pos_universal_printer:
+       git:
+         url: https://github.com/<username>/pos_universal_printer.git
+         path: packages/pos_universal_printer
