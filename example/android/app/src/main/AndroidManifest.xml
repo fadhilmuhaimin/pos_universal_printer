@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.posuniversal.printer">
+
+    <!-- Permissions for Bluetooth Classic scanning and connection on Android 12+ -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <!-- Optional: location permission improves old scanning performance -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Internet permission for TCP printing -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="pos_universal_printer_android"
+        android:usesCleartextTraffic="true">
+        <!-- The plugin does not declare any activities -->
+    </application>
+
+</manifest>

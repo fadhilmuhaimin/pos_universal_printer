@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+          cd packages/pos_universal_printer
+          flutter pub get
+          cd ../pos_universal_printer_android
+          flutter pub get
+          cd ../pos_universal_printer_ios
+          flutter pub get
+          cd ../../example
+          flutter pub get
+
+      - name: Format code
+        run: |
+          dart format --set-exit-if-changed .
+
+      - name: Analyze
+        run: |
+          flutter analyze .
+
+      - name: Run tests
+        run: |
+          cd packages/pos_universal_printer
+          flutter test
+
+      - name: Build example (APK)
+        run: |
+          cd example
+          flutter build apk --debug

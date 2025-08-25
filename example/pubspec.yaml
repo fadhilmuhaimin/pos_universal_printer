@@ -1,0 +1,25 @@
+name: pos_universal_printer_example
+description: Contoh penggunaan plugin pos_universal_printer untuk mencetak
+  struk dan label.
+publish_to: 'none'
+version: 0.1.0
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.19.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  pos_universal_printer:
+    path: ../packages/pos_universal_printer
+  pos_universal_printer_android:
+    path: ../packages/pos_universal_printer_android
+  pos_universal_printer_ios:
+    path: ../packages/pos_universal_printer_ios
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

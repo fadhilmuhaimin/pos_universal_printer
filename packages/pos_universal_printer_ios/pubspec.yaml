@@ -1,0 +1,21 @@
+name: pos_universal_printer_ios
+description: Implementasi iOS untuk pos_universal_printer.
+version: 0.1.0
+publish_to: 'none'
+
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  pos_universal_printer:
+    path: ../pos_universal_printer
+
+flutter:
+  plugin:
+    implements: pos_universal_printer
+    platforms:
+      ios:
+        pluginClass: PosUniversalPrinterIosPlugin
