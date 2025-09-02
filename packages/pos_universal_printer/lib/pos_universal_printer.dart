@@ -1,3 +1,4 @@
+/// POS Universal Printer public API library.
 library pos_universal_printer;
 
 import 'dart:async';
@@ -53,6 +54,7 @@ class PosUniversalPrinter {
     _manager = PosPrinterManager(_channel, _logger);
   }
 
+  /// Entry point for printing receipts/labels and managing printer roles.
   static final PosUniversalPrinter instance = PosUniversalPrinter._();
 
   static const MethodChannel _channel = MethodChannel('pos_universal_printer');

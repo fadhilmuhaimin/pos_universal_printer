@@ -41,7 +41,7 @@ class JobQueue {
           logger.add(LogLevel.debug, 'Running job: ${job.description}');
           await job.action();
           break;
-  } catch (e) {
+        } catch (e) {
           attempt++;
           logger.add(LogLevel.error,
               'Job "${job.description}" failed (attempt $attempt): $e');

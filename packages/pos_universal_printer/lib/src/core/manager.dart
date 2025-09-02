@@ -18,8 +18,7 @@ class DeviceConnection {
 /// Manages multiple printer connections keyed by [PosPrinterRole]. Wraps
 /// the platform channel, TCP client, job queue and logger.
 class PosPrinterManager {
-  PosPrinterManager(this._channel, this.logger)
-      : jobQueue = JobQueue(logger);
+  PosPrinterManager(this._channel, this.logger) : jobQueue = JobQueue(logger);
 
   final MethodChannel _channel;
   final Logger logger;
@@ -39,8 +38,8 @@ class PosPrinterManager {
     } else if (device.type == PrinterType.bluetooth) {
       try {
         final bool ok = await _channel.invokeMethod<bool>('connectBluetooth', {
-          'address': device.address,
-        }) ??
+              'address': device.address,
+            }) ??
             false;
         conn.bluetoothConnected = ok;
         if (ok) {
@@ -51,8 +50,8 @@ class PosPrinterManager {
               'Failed to connect Bluetooth printer ${device.name}');
         }
       } on PlatformException catch (e) {
-        logger.add(LogLevel.error,
-            'Bluetooth connect error: ${e.message ?? e.code}');
+        logger.add(
+            LogLevel.error, 'Bluetooth connect error: ${e.message ?? e.code}');
       }
     }
   }

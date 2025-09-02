@@ -1,4 +1,3 @@
-
 import '../protocols/escpos/builder.dart';
 
 /// Represents a line item on the receipt.
@@ -47,15 +46,16 @@ class ReceiptRenderer {
         if (i == 0) {
           final qtyStr = item.qty.toString().padLeft(3);
           final priceStr = _formatRupiah(item.price * item.qty).padLeft(12);
-          builder.text('${namePart.padRight(paperChars - 15)} $qtyStr $priceStr');
+          builder
+              .text('${namePart.padRight(paperChars - 15)} $qtyStr $priceStr');
         } else {
           builder.text(namePart);
         }
       }
     }
     builder.feed(1);
-    builder.text('TOTAL'.padRight(paperChars - 12) +
-        _formatRupiah(total).padLeft(12),
+    builder.text(
+        'TOTAL'.padRight(paperChars - 12) + _formatRupiah(total).padLeft(12),
         bold: true);
     builder.feed(1);
     builder.text(footer, align: PosAlign.center);

@@ -33,7 +33,7 @@ class EscPosBuilder {
       case PosAlign.right:
         n = 2;
         break;
-  case PosAlign.left:
+      case PosAlign.left:
         n = 0;
     }
     _bytes.addAll([0x1B, 0x61, n]);

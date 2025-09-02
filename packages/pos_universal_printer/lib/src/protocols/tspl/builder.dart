@@ -76,7 +76,8 @@ class TsplBuilder {
   /// overwrite or 1 for OR. [bitmapData] must be a string of hex digits
   /// representing the image rows. Use a separate utility to encode
   /// images into TSPL bitmap format.
-  void bitmap(int x, int y, int widthBytes, int height, int mode, String bitmapData) {
+  void bitmap(
+      int x, int y, int widthBytes, int height, int mode, String bitmapData) {
     _buffer.writeln('BITMAP $x,$y,$widthBytes,$height,$mode,$bitmapData');
   }
 
