@@ -13,3 +13,7 @@
 - Add example/, LICENSE, README improvements, and API dartdoc.
 - Fix analyzer warnings and formatting.
 - Prep for pub.dev publishing flow and improve documentation.
+
+## 0.1.2
+
+- Fix repository URL to point to the package subdirectory in the monorepo for pub.dev verification.
