@@ -5,6 +5,7 @@ import 'package:pos_universal_printer/pos_universal_printer.dart';
 import 'package:pos_universal_printer/src/protocols/escpos/builder.dart';
 import 'package:pos_universal_printer/src/protocols/tspl/builder.dart';
 import 'package:pos_universal_printer/src/protocols/cpcl/builder.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,7 +85,15 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
+  Future<void> _ensureBtPermissions() async {
+    await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+    ].request();
+  }
+
   Future<void> _scanBluetooth() async {
+    await _ensureBtPermissions();
     final results = await printer.scanBluetooth().toList();
     setState(() {
       _bluetoothDevices = results;
@@ -96,6 +105,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (type == null) return;
     PrinterDevice device;
     if (type == PrinterType.bluetooth) {
+      await _ensureBtPermissions();
       final selected = _selectedDevice[role];
       if (selected == null) return;
       device = selected;

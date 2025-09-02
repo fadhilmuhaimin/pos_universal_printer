@@ -12,10 +12,6 @@
     <!-- Internet permission for TCP printing -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <application
-        android:label="pos_universal_printer_android"
-        android:usesCleartextTraffic="true">
-        <!-- The plugin does not declare any activities -->
-    </application>
+    <!-- No <application> section in library manifest to avoid merge conflicts. -->
 
 </manifest>

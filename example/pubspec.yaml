@@ -15,6 +15,7 @@ dependencies:
     path: ../packages/pos_universal_printer_android
   pos_universal_printer_ios:
     path: ../packages/pos_universal_printer_ios
+  permission_handler: ^11.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
