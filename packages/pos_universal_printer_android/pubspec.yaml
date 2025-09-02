@@ -1,6 +1,8 @@
 name: pos_universal_printer_android
-description: Implementasi Android untuk pos_universal_printer.
+description: Android implementation for pos_universal_printer.
 version: 0.1.0
+homepage: https://github.com/fadhilmuhaimin/pos_universal_printer
+repository: https://github.com/fadhilmuhaimin/pos_universal_printer
 publish_to: 'none'
 
 environment:

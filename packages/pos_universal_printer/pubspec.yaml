@@ -1,9 +1,9 @@
 name: pos_universal_printer
 description: >-
-  Plugin inti untuk pos_universal_printer yang menyediakan API publik
-  berbasis Dart untuk mencetak struk dan label ESC/POS, TSPL, dan CPCL.
+  Flutter POS printing plugin (ESC/POS receipts, TSPL/CPCL labels) with multi-role routing and Bluetooth/TCP support.
 version: 0.1.0
-publish_to: 'none'
+homepage: https://github.com/fadhilmuhaimin/pos_universal_printer
+repository: https://github.com/fadhilmuhaimin/pos_universal_printer
 environment:
   sdk: ">=3.2.0 <4.0.0"
   flutter: ">=3.19.0"

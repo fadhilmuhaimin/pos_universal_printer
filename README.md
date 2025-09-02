@@ -1,32 +1,32 @@
 # pos_universal_printer
 
-Plugin Flutter untuk mencetak struk kasir dan label pada berbagai printer thermal. Mendukung perintah ESC/POS (struk), TSPL dan CPCL (label). Dirancang multi‑peran (kasir, dapur, stiker), dengan antrian pekerjaan, retry, serta koneksi Bluetooth Classic (Android) dan TCP/IP (Android & iOS).
+A Flutter plugin for printing POS receipts and labels on various thermal printers. Supports ESC/POS (receipts), TSPL and CPCL (labels). Designed for multi‑role routing (cashier, kitchen, sticker) with job queue, retries, Bluetooth Classic (Android), and TCP/IP (Android & iOS).
 
-## Fitur utama
+## Key features
 
-- ESC/POS: teks, align, bold, barcode, QR, feed/cut, buka laci kasir (cash drawer).
-- TSPL & CPCL: builder sederhana untuk label (TEXT/BARCODE/QRCODE/BITMAP/PRINT).
-- Multi‑peran: mapping printer per role (cashier, kitchen, sticker).
-- Koneksi: Bluetooth Classic (Android) dan TCP 9100 (Android & iOS).
-- Reliability: job queue dengan retry dan TCP auto‑reconnect.
+- ESC/POS: text, alignment, bold, barcode, QR, feed/cut, cash drawer (ESC p).
+- TSPL & CPCL: simple builders for labels (TEXT/BARCODE/QRCODE/BITMAP/PRINT).
+- Multi‑role: map different printers per role (cashier, kitchen, sticker).
+- Connectivity: Bluetooth Classic (Android) and TCP 9100 (Android & iOS).
+- Reliability: job queue with retry and TCP auto‑reconnect; BT write with reconnect fallback.
 
-## Dukungan platform & perangkat
+## Platform & device support
 
-- Android: Bluetooth Classic (SPP/RFCOMM) dan TCP.
-- iOS: hanya TCP (Bluetooth SPP non‑MFi tidak didukung di iOS).
-- Merek umum seperti Blue Print yang kompatibel ESC/POS/TSPL/CPCL dapat bekerja.
+- Android: Bluetooth Classic (SPP/RFCOMM) and TCP.
+- iOS: TCP only (non‑MFi Bluetooth SPP is not supported by iOS).
+- Common brands like Blue Print that are ESC/POS/TSPL/CPCL compatible should work.
 
-## Prasyarat
+## Requirements
 
 - Flutter 3.19+ (Dart 3.2+).
-- Android: targetSdk 31+ disarankan (Android 12) untuk izin Bluetooth baru.
-- iOS: iOS 12.0+ (menggunakan Network.framework untuk TCP).
+- Android: targetSdk 31+ recommended (Android 12) due to new Bluetooth permissions.
+- iOS: 12.0+ (uses Network.framework for TCP).
 
-## Instalasi
+## Installation
 
-Opsi A — dari Git (monorepo ini):
+Option A — from Git (this monorepo):
 
-Tambahkan dependency dan overrides berikut ke `pubspec.yaml` aplikasi Anda:
+Add these dependencies and overrides to your app `pubspec.yaml`:
 
 ```yaml
 dependencies:
@@ -48,32 +48,32 @@ dependency_overrides:
       path: packages/pos_universal_printer_ios
 ```
 
-Catatan: karena ini federated plugin di satu repo, `dependency_overrides` memastikan paket implementasi platform ikut terambil ketika menggunakan Git.
+Note: this is a federated plugin in a single repo; `dependency_overrides` ensures the platform packages are pulled when using the Git source.
 
-Kemudian jalankan:
+Then:
 
 ```sh
 flutter pub get
 ```
 
-Opsi B — dari pub.dev:
+Option B — from pub.dev:
 
-- Jika paket telah dipublikasikan, cukup:
+- If published:
 
 ```yaml
 dependencies:
   pos_universal_printer: ^X.Y.Z
 ```
 
-## Setup platform
+## Platform setup
 
 ### Android
 
-- Izin Bluetooth (Android 12+): plugin sudah mendeklarasikan izin di manifest implementasi. Namun Anda tetap perlu meminta izin runtime sebelum scan/connect.
-- Pastikan printer sudah di‑pair dari Settings bila menggunakan Bluetooth Classic. Fungsi "scan" pada plugin ini menampilkan daftar perangkat yang sudah paired (bonded), bukan discovery penuh.
-- TCP tidak memerlukan izin khusus selain INTERNET (sudah dideklarasikan oleh plugin).
+- Bluetooth permissions (Android 12+): the plugin declares them, but you still need to request runtime permissions before scan/connect.
+- Make sure the printer is paired in Android Settings for Bluetooth Classic. The plugin’s "scan" lists bonded (paired) devices, not full discovery.
+- TCP requires only INTERNET (declared by the plugin).
 
-Contoh meminta izin (opsional) dengan `permission_handler`:
+Optional runtime permission snippet using `permission_handler`:
 
 ```dart
 import 'package:permission_handler/permission_handler.dart';
@@ -86,87 +86,87 @@ Future<void> ensureBtPermissions() async {
 }
 ```
 
-Panggil `ensureBtPermissions()` sebelum `scanBluetooth()`/`registerDevice()` untuk Bluetooth.
+Call `ensureBtPermissions()` before `scanBluetooth()`/`registerDevice()` when using Bluetooth.
 
 ### iOS
 
-- Hanya TCP/IP (LAN/Wi‑Fi). Bluetooth SPP non‑MFi tidak didukung iOS.
-- Set deployment target ke 12.0+ di `ios/Podfile`:
+- TCP/IP (LAN/Wi‑Fi) only. Non‑MFi Bluetooth SPP is not supported.
+- Set the deployment target to 12.0+ in `ios/Podfile`:
 
 ```ruby
 platform :ios, '12.0'
 ```
 
-Biasanya tidak perlu ATS exception untuk raw TCP ke IP LAN.
+Usually no ATS exceptions are required for raw TCP to LAN IPs.
 
-## Cara pakai (contoh cepat)
+## How to use (quick examples)
 
-### 1) Definisikan printer per peran (Bluetooth Android atau TCP)
+### 1) Register per‑role printers (Android Bluetooth or TCP)
 
 ```dart
 import 'package:pos_universal_printer/pos_universal_printer.dart';
 
 final pos = PosUniversalPrinter.instance;
 
-// TCP (bekerja di Android & iOS)
+// TCP (Android & iOS)
 await pos.registerDevice(
   PosPrinterRole.cashier,
   PrinterDevice(
     id: '192.168.1.50:9100',
-    name: 'Kasir LAN',
+    name: 'Cashier LAN',
     type: PrinterType.tcp,
     address: '192.168.1.50',
     port: 9100,
   ),
 );
 
-// Bluetooth (Android saja) — hasil dari scan
+// Bluetooth (Android only) — from scan
 final btDevices = await pos.scanBluetooth().toList();
-final selected = btDevices.first; // pilih sesuai UI Anda
+final selected = btDevices.first; // choose via your UI
 await pos.registerDevice(PosPrinterRole.kitchen, selected);
 ```
 
-### 2) Cetak struk ESC/POS (Builder)
+### 2) Print ESC/POS receipt (Builder)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/escpos/builder.dart';
 
 final b = EscPosBuilder();
-b.text('TOKO CONTOH', bold: true, align: PosAlign.center);
-b.text('Jl. Contoh 123');
+b.text('SAMPLE STORE', bold: true, align: PosAlign.center);
+b.text('123 Sample St');
 b.feed(1);
-b.text('Item A           1   Rp10.000');
-b.text('Item B           2   Rp20.000');
+b.text('Item A           1   $10.00');
+b.text('Item B           2   $20.00');
 b.feed(1);
-b.text('TOTAL                 Rp30.000', bold: true);
+b.text('TOTAL                $30.00', bold: true);
 b.feed(2);
 b.cut();
 
 pos.printEscPos(PosPrinterRole.cashier, b);
 ```
 
-Atau pakai renderer cepat bawaan untuk daftar item (58mm/80mm):
+Or use the built‑in quick renderer for a list of items (58mm/80mm):
 
 ```dart
 import 'package:pos_universal_printer/src/renderer/receipt_renderer.dart';
 
 final items = [
-  ReceiptItem(name: 'Es Teh', qty: 1, price: 5000),
-  ReceiptItem(name: 'Ayam Geprek Level 3', qty: 1, price: 25000),
+  ReceiptItem(name: 'Iced Tea', qty: 1, price: 5000),
+  ReceiptItem(name: 'Fried Chicken Lvl 3', qty: 1, price: 25000),
 ];
 
 pos.printReceipt(PosPrinterRole.cashier, items, is80mm: false);
 ```
 
-### 3) Buka laci kasir (cash drawer)
+### 3) Open the cash drawer
 
 ```dart
-pos.openDrawer(PosPrinterRole.cashier); // ESC p dengan pulsa default
+pos.openDrawer(PosPrinterRole.cashier); // ESC p with default pulse
 ```
 
-Anda dapat menyesuaikan pulsa: `openDrawer(role, m: 0, t1: 25, t2: 250)`.
+You can tune pulse values: `openDrawer(role, m: 0, t1: 25, t2: 250)`.
 
-### 4) Cetak label TSPL (TSC/Argox)
+### 4) Print TSPL label (TSC/Argox)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/tspl/builder.dart';
@@ -182,14 +182,14 @@ tspl.printLabel(1);
 pos.printTspl(PosPrinterRole.sticker, String.fromCharCodes(tspl.build()));
 ```
 
-Atau langsung kirim perintah string TSPL:
+Or send TSPL string samples directly:
 
 ```dart
-// Lebih sederhana dengan helper bawaan:
+// Simpler with the built‑in helper:
 pos.printTspl(PosPrinterRole.sticker, TsplBuilder.sampleLabel58x40());
 ```
 
-### 5) Cetak label CPCL (Zebra)
+### 5) Print CPCL label (Zebra)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/cpcl/builder.dart';
@@ -203,11 +203,11 @@ cpcl.printLabel();
 
 pos.printCpcl(PosPrinterRole.sticker, String.fromCharCodes(cpcl.build()));
 
-// Atau gunakan sampel bawaan:
+// Or use the built‑in sample:
 pos.printCpcl(PosPrinterRole.sticker, CpclBuilder.sampleLabel());
 ```
 
-### 6) Kirim raw bytes
+### 6) Send raw bytes
 
 ```dart
 pos.printRaw(PosPrinterRole.kitchen, [0x1B, 0x40, 0x0A]); // ESC @, LF
@@ -220,46 +220,46 @@ await pos.unregisterDevice(PosPrinterRole.kitchen);
 await pos.dispose();
 ```
 
-## Contoh aplikasi
+## Example app
 
-Lihat folder `example/` untuk UI demo yang:
-- Memilih tipe koneksi per peran (Bluetooth/TCP)
-- Scan Bluetooth (Android)
-- Uji ESC/POS, TSPL, CPCL, Open Drawer, dan stress test
+See `example/` for a demo UI that:
+- Selects connection type per role (Bluetooth/TCP)
+- Scans Bluetooth (Android)
+- Tests ESC/POS, TSPL, CPCL, Open Drawer, and a stress test
 
-## Praktik terbaik
+## Best practices
 
-- Gunakan TCP/IP bila memungkinkan (stabil, lintas Android & iOS).
-- Untuk Bluetooth Android: pastikan perangkat sudah paired dan izinkan `bluetoothScan`/`bluetoothConnect` saat runtime.
-- Cash drawer harus terhubung ke port RJ‑11 printer struk dan printer mendukung perintah ESC/POS `ESC p`.
-- Pilih protokol yang sesuai: ESC/POS untuk struk, TSPL/CPCL untuk label. Banyak printer label tidak menerima ESC/POS untuk label.
+- Prefer TCP/IP when possible (more stable, works on Android & iOS).
+- For Android Bluetooth: ensure the device is paired and grant `bluetoothScan`/`bluetoothConnect` runtime permissions.
+- Cash drawer must be connected to the printer’s RJ‑11 port and the printer must support ESC/POS `ESC p`.
+- Choose the correct protocol: ESC/POS for receipts, TSPL/CPCL for labels (many label printers won’t accept ESC/POS for labels).
 
-### Catatan lebar kertas dan kolom (Blueprint 80/57 mm)
+### Paper width and character columns (Blueprint 80/57 mm)
 
-- Lebar kertas 80 mm dengan lebar cetak efektif ~72 mm umumnya ≈ 48 kolom teks.
-- Mode 64 mm (beberapa model Blueprint) ≈ ~42 kolom.
-- Lebar kertas 57/58 mm ≈ 32 kolom.
+- 80 mm paper with ~72 mm printable width ≈ 48 columns.
+- 64 mm printable mode (some models) ≈ ~42 columns.
+- 57/58 mm ≈ 32 columns.
 
-Anda dapat mengatur kolom secara manual di `ReceiptRenderer.render()`:
+You can set columns manually with `ReceiptRenderer.render()`:
 
 ```dart
-// 72 mm (≈48 kolom)
+// 72 mm (≈48 columns)
 pos.printReceipt(role, items, columns: 48);
 
-// 64 mm (≈42 kolom)
+// 64 mm (≈42 columns)
 pos.printReceipt(role, items, columns: 42);
 
-// 57/58 mm (≈32 kolom)
+// 57/58 mm (≈32 columns)
 pos.printReceipt(role, items, columns: 32);
 ```
 
 ## Troubleshooting
 
-- Tidak bisa scan Bluetooth (Android 12+): minta izin runtime sebelum scan. Beberapa device membutuhkan lokasi aktif.
-- iOS tidak bisa Bluetooth: ini batasan platform. Gunakan TCP.
-- Tidak tercetak via TCP: pastikan IP/port (umumnya 9100) benar dan printer dalam mode yang sesuai (ESC/POS vs TSPL/CPCL).
-- Hasil potong tidak jalan: tidak semua printer mendukung perintah cut penuh; coba manual tear atau model khusus.
+- Bluetooth scan fails (Android 12+): request runtime permissions before scanning. Some devices also require Location enabled.
+- iOS cannot use Bluetooth SPP: platform limitation. Use TCP.
+- Nothing printed via TCP: verify IP/port (usually 9100) and printer mode (ESC/POS vs TSPL/CPCL).
+- Paper cut not working: not all printers support full cut; use tear bar or device‑specific command.
 
-## Lisensi
+## License
 
-Lihat file `LICENSE` di repo ini.
+See the `LICENSE` file in this repo.

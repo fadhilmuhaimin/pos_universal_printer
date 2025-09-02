@@ -2,17 +2,12 @@ library pos_universal_printer;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 
 import 'src/core/manager.dart';
 import 'src/core/logging.dart';
-import 'src/net/tcp_client.dart';
-import 'src/core/queue.dart';
 import 'src/protocols/escpos/builder.dart';
-import 'src/protocols/tspl/builder.dart';
-import 'src/protocols/cpcl/builder.dart';
 import 'src/renderer/receipt_renderer.dart';
 
 /// Roles in a point‑of‑sale system. Each role can be mapped to a specific
