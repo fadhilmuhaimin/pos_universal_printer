@@ -92,13 +92,45 @@ class PosPrinterManager {
         }
         await tcp.send(data);
       } else if (conn.device.type == PrinterType.bluetooth) {
-        final bool ok = await _channel.invokeMethod<bool>('writeBluetooth', {
-          'address': conn.device.address,
-          'bytes': data,
-        }) ??
-            false;
+        // Try write once; if it fails, attempt disconnect -> reconnect -> retry once
+        Future<bool> writeOnce() async {
+          final bool ok = await _channel.invokeMethod<bool>('writeBluetooth', {
+                'address': conn.device.address,
+                'bytes': data,
+              }) ??
+              false;
+          return ok;
+        }
+
+        bool ok = await writeOnce();
         if (!ok) {
-          throw Exception('Bluetooth write failed');
+          logger.add(LogLevel.warning,
+              'Bluetooth write failed for ${conn.device.address}, retrying with reconnect');
+          try {
+            await _channel.invokeMethod('disconnectBluetooth', {
+              'address': conn.device.address,
+            });
+          } catch (_) {
+            // ignore
+          }
+          try {
+            final bool reconnected = await _channel.invokeMethod<bool>(
+                  'connectBluetooth',
+                  {
+                    'address': conn.device.address,
+                  },
+                ) ??
+                false;
+            conn.bluetoothConnected = reconnected;
+            if (reconnected) {
+              ok = await writeOnce();
+            }
+          } catch (e) {
+            logger.add(LogLevel.error, 'Bluetooth reconnect error: $e');
+          }
+        }
+        if (!ok) {
+          throw Exception('Bluetooth write failed after reconnect');
         }
       }
     });

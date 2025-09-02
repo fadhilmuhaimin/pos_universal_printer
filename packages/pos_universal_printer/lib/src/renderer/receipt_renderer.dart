@@ -16,12 +16,17 @@ class ReceiptItem {
 /// formats amounts in Rupiah.
 class ReceiptRenderer {
   /// Renders a list of [items] into ESC/POS bytes. [is80mm] selects
-  /// paper width (default 58 mm). [storeName] and [footer] customise
-  /// header and footer texts.
-  static List<int> render(List<ReceiptItem> items,
-      {bool is80mm = false,
-      String storeName = 'TOKO CONTOH',
-      String footer = 'Terima kasih'}) {
+  /// paper width (default 58 mm). Alternatifnya, tentukan [columns]
+  /// (jumlah karakter per baris) untuk kontrol penuh — contoh umum:
+  /// 72 mm ≈ 48 kolom, 64 mm ≈ ~42 kolom, 57/58 mm ≈ 32 kolom.
+  /// [storeName] dan [footer] menyesuaikan header/footer.
+  static List<int> render(
+    List<ReceiptItem> items, {
+    bool is80mm = false,
+    int? columns,
+    String storeName = 'TOKO CONTOH',
+    String footer = 'Terima kasih',
+  }) {
     final builder = EscPosBuilder();
     // Header
     builder.setAlign(PosAlign.center);
@@ -30,7 +35,7 @@ class ReceiptRenderer {
     builder.text(DateTime.now().toString());
     builder.feed(1);
     // Body
-    final paperChars = is80mm ? 48 : 32;
+    final paperChars = columns ?? (is80mm ? 48 : 32);
     builder.setAlign(PosAlign.left);
     builder.text('Item            Qty   Harga', bold: true);
     double total = 0;

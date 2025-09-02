@@ -70,7 +70,7 @@ dependencies:
 ### Android
 
 - Izin Bluetooth (Android 12+): plugin sudah mendeklarasikan izin di manifest implementasi. Namun Anda tetap perlu meminta izin runtime sebelum scan/connect.
-- Pastikan printer sudah di‑pair dari Settings bila menggunakan Bluetooth Classic.
+- Pastikan printer sudah di‑pair dari Settings bila menggunakan Bluetooth Classic. Fungsi "scan" pada plugin ini menampilkan daftar perangkat yang sudah paired (bonded), bukan discovery penuh.
 - TCP tidak memerlukan izin khusus selain INTERNET (sudah dideklarasikan oleh plugin).
 
 Contoh meminta izin (opsional) dengan `permission_handler`:
@@ -126,7 +126,7 @@ final selected = btDevices.first; // pilih sesuai UI Anda
 await pos.registerDevice(PosPrinterRole.kitchen, selected);
 ```
 
-### 2) Cetak struk ESC/POS
+### 2) Cetak struk ESC/POS (Builder)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/escpos/builder.dart';
@@ -145,11 +145,26 @@ b.cut();
 pos.printEscPos(PosPrinterRole.cashier, b);
 ```
 
+Atau pakai renderer cepat bawaan untuk daftar item (58mm/80mm):
+
+```dart
+import 'package:pos_universal_printer/src/renderer/receipt_renderer.dart';
+
+final items = [
+  ReceiptItem(name: 'Es Teh', qty: 1, price: 5000),
+  ReceiptItem(name: 'Ayam Geprek Level 3', qty: 1, price: 25000),
+];
+
+pos.printReceipt(PosPrinterRole.cashier, items, is80mm: false);
+```
+
 ### 3) Buka laci kasir (cash drawer)
 
 ```dart
 pos.openDrawer(PosPrinterRole.cashier); // ESC p dengan pulsa default
 ```
+
+Anda dapat menyesuaikan pulsa: `openDrawer(role, m: 0, t1: 25, t2: 250)`.
 
 ### 4) Cetak label TSPL (TSC/Argox)
 
@@ -170,6 +185,7 @@ pos.printTspl(PosPrinterRole.sticker, String.fromCharCodes(tspl.build()));
 Atau langsung kirim perintah string TSPL:
 
 ```dart
+// Lebih sederhana dengan helper bawaan:
 pos.printTspl(PosPrinterRole.sticker, TsplBuilder.sampleLabel58x40());
 ```
 
@@ -186,6 +202,9 @@ cpcl.qrCode(2, 4, 50, 300, 'https://example.com');
 cpcl.printLabel();
 
 pos.printCpcl(PosPrinterRole.sticker, String.fromCharCodes(cpcl.build()));
+
+// Atau gunakan sampel bawaan:
+pos.printCpcl(PosPrinterRole.sticker, CpclBuilder.sampleLabel());
 ```
 
 ### 6) Kirim raw bytes
@@ -214,6 +233,25 @@ Lihat folder `example/` untuk UI demo yang:
 - Untuk Bluetooth Android: pastikan perangkat sudah paired dan izinkan `bluetoothScan`/`bluetoothConnect` saat runtime.
 - Cash drawer harus terhubung ke port RJ‑11 printer struk dan printer mendukung perintah ESC/POS `ESC p`.
 - Pilih protokol yang sesuai: ESC/POS untuk struk, TSPL/CPCL untuk label. Banyak printer label tidak menerima ESC/POS untuk label.
+
+### Catatan lebar kertas dan kolom (Blueprint 80/57 mm)
+
+- Lebar kertas 80 mm dengan lebar cetak efektif ~72 mm umumnya ≈ 48 kolom teks.
+- Mode 64 mm (beberapa model Blueprint) ≈ ~42 kolom.
+- Lebar kertas 57/58 mm ≈ 32 kolom.
+
+Anda dapat mengatur kolom secara manual di `ReceiptRenderer.render()`:
+
+```dart
+// 72 mm (≈48 kolom)
+pos.printReceipt(role, items, columns: 48);
+
+// 64 mm (≈42 kolom)
+pos.printReceipt(role, items, columns: 42);
+
+// 57/58 mm (≈32 kolom)
+pos.printReceipt(role, items, columns: 32);
+```
 
 ## Troubleshooting
 
