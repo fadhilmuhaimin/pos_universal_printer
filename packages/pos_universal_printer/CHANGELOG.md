@@ -7,3 +7,9 @@
 - Role-based printer mapping.
 - Android Bluetooth Classic and TCP; iOS TCP.
 - Basic receipt renderer and cash drawer command.
+
+## 0.1.1
+
+- Add example/, LICENSE, README improvements, and API dartdoc.
+- Fix analyzer warnings and formatting.
+- Prep for pub.dev publishing flow and improve documentation.
