@@ -11,6 +11,12 @@ import 'src/core/logging.dart';
 import 'src/protocols/escpos/builder.dart';
 import 'src/renderer/receipt_renderer.dart';
 
+// Public re-exports for builders and renderer so users don't import from src/.
+export 'src/protocols/escpos/builder.dart' show EscPosBuilder, PosAlign, EscPosHelper;
+export 'src/protocols/tspl/builder.dart' show TsplBuilder;
+export 'src/protocols/cpcl/builder.dart' show CpclBuilder;
+export 'src/renderer/receipt_renderer.dart' show ReceiptItem, ReceiptRenderer;
+
 /// Roles in a point‑of‑sale system. Each role can be mapped to a specific
 /// printer device so that receipts are routed correctly (e.g. cashier
 /// prints to the receipt printer, kitchen prints orders, sticker prints

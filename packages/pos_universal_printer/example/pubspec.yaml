@@ -1,0 +1,21 @@
+name: pos_universal_printer_example
+publish_to: 'none'
+description: Example for pos_universal_printer package.
+version: 1.0.0
+environment:
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.19.0"
+dependencies:
+  flutter:
+    sdk: flutter
+  pos_universal_printer:
+    path: ..
+  permission_handler: ^11.3.1
+
+dependency_overrides:
+  pos_universal_printer_android:
+    path: ../../pos_universal_printer_android
+  pos_universal_printer_ios:
+    path: ../../pos_universal_printer_ios
+flutter:
+  uses-material-design: true

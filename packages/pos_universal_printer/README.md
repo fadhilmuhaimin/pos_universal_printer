@@ -17,11 +17,11 @@ A Flutter plugin for printing POS receipts and labels on various thermal printer
 
 ## Installation
 
-Add the package from pub.dev once published:
+Add the package from pub.dev:
 
 ```yaml
 dependencies:
-  pos_universal_printer: ^0.1.0
+  pos_universal_printer: ^0.1.2
 ```
 
 For Git usage in a monorepo, see the repository README for dependency_overrides instructions.
@@ -29,28 +29,44 @@ For Git usage in a monorepo, see the repository README for dependency_overrides 
 ## Quick start
 
 ```dart
+import 'package:flutter/material.dart';
 import 'package:pos_universal_printer/pos_universal_printer.dart';
 
-final pos = PosUniversalPrinter.instance;
+void main() {
+  runApp(const MyApp());
+}
 
-// Register a TCP printer (Android/iOS)
-await pos.registerDevice(
-  PosPrinterRole.cashier,
-  PrinterDevice(
-    id: '192.168.1.50:9100',
-    name: 'Cashier LAN',
-    type: PrinterType.tcp,
-    address: '192.168.1.50',
-    port: 9100,
-  ),
-);
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
-// Print a simple receipt
-pos.printReceipt(
-  PosPrinterRole.cashier,
-  [ReceiptItem(name: 'Item A', qty: 1, price: 10000)],
-  is80mm: false,
-);
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('pos_universal_printer example')),
+        body: Center(
+          child: ElevatedButton(
+            onPressed: () async {
+              final pos = PosUniversalPrinter.instance;
+              await pos.registerDevice(
+                PosPrinterRole.cashier,
+                PrinterDevice(
+                  id: '192.168.1.50:9100',
+                  name: 'Cashier LAN',
+                  type: PrinterType.tcp,
+                  address: '192.168.1.50',
+                  port: 9100,
+                ),
+              );
+              pos.openDrawer(PosPrinterRole.cashier);
+            },
+            child: const Text('Test Open Drawer'),
+          ),
+        ),
+      ),
+    );
+  }
+}
 ```
 
 More examples and troubleshooting are available in the root README of the repository.
