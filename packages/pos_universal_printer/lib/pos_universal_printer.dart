@@ -12,7 +12,8 @@ import 'src/protocols/escpos/builder.dart';
 import 'src/renderer/receipt_renderer.dart';
 
 // Public re-exports for builders and renderer so users don't import from src/.
-export 'src/protocols/escpos/builder.dart' show EscPosBuilder, PosAlign, EscPosHelper;
+export 'src/protocols/escpos/builder.dart'
+    show EscPosBuilder, PosAlign, EscPosHelper;
 export 'src/protocols/tspl/builder.dart' show TsplBuilder;
 export 'src/protocols/cpcl/builder.dart' show CpclBuilder;
 export 'src/renderer/receipt_renderer.dart' show ReceiptItem, ReceiptRenderer;

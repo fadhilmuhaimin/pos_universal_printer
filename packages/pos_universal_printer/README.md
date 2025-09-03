@@ -21,7 +21,7 @@ Add the package from pub.dev:
 
 ```yaml
 dependencies:
-  pos_universal_printer: ^0.1.2
+  pos_universal_printer: ^0.1.3
 ```
 
 For Git usage in a monorepo, see the repository README for dependency_overrides instructions.

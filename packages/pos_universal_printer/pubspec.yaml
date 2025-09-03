@@ -1,7 +1,7 @@
 name: pos_universal_printer
 description: >-
   Flutter POS printing plugin (ESC/POS receipts, TSPL/CPCL labels) with multi-role routing and Bluetooth/TCP support.
-version: 0.1.2
+version: 0.1.3
 homepage: https://github.com/fadhilmuhaimin/pos_universal_printer
 repository: https://github.com/fadhilmuhaimin/pos_universal_printer/tree/main/packages/pos_universal_printer
 environment:

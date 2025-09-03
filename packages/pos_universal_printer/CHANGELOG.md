@@ -17,3 +17,8 @@
 ## 0.1.2
 
 - Fix repository URL to point to the package subdirectory in the monorepo for pub.dev verification.
+
+## 0.1.3
+
+- README: update install snippet to ^0.1.3 and add full example app.
+- Public exports for builders/renderers; package example uses them.
