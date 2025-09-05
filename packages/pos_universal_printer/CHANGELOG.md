@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.1
+
+🔧 **Documentation & API Fixes**
+
+### 📚 Documentation Updates
+- **Fixed README Examples**: Updated all examples to match actual main.dart implementation
+- **Complete Invoice Style Guide**: Added exact invoice implementation from main.dart with proper wrap text and dynamic height
+- **Bluetooth Connect/Disconnect Guide**: Added comprehensive guide with loading states
+- **Parameter Reference**: Complete customization guide for all parameters
+
+### 🛠️ API Consistency
+- **README now matches main.dart**: All examples are now consistent with working implementation
+- **Invoice Style Example**: Shows proper 2-menu example with `_printSingleMenuStickerOnly` method
+- **Text Wrapping**: Includes `_wrapText` helper for automatic text wrapping
+- **Dynamic Height**: Proper `clamp(15.0, 30.0)` implementation
+
+### 📖 New Documentation Sections
+- Font size guide (Font 1-8 with size multipliers explanation)
+- Complete parameter reference for customization
+- Bluetooth scanning with loading states
+- Left-right same line positioning examples
+
 ## 0.2.0
 
 🎉 **Major Feature Update - Custom Sticker API & Invoice Templates**

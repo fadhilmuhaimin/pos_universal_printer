@@ -1,5 +1,20 @@
 import '../../pos_universal_printer.dart';
 
+/// Model untuk menu item pada invoice sticker
+class MenuItemModel {
+  final String menuName;
+  final List<String> modifications;
+  final String? note;
+  final String customerName;
+
+  MenuItemModel({
+    required this.menuName,
+    this.modifications = const [],
+    this.note,
+    required this.customerName,
+  });
+}
+
 /// Class untuk mendefinisikan text pada sticker label
 /// 
 /// Digunakan bersama dengan [CustomStickerPrinter.printSticker] untuk membuat
@@ -482,5 +497,224 @@ class CustomStickerPrinter {
       density: density,
       speed: speed,
     );
+  }
+
+  /// Membuat invoice sticker untuk menu restoran
+  /// 
+  /// Method ini menghasilkan String TSPL yang siap dikirim ke printer,
+  /// dengan format khusus untuk invoice restoran (customer name, timestamp, menu, modifications)
+  /// 
+  /// ## Parameter:
+  /// - [menuItem]: Data menu item dengan customer name, menu name, modifications, note
+  /// - [widthMm]: Lebar sticker dalam mm (default: 58mm)
+  /// - [gapMm]: Gap antar sticker dalam mm (default: 3mm)
+  /// - [marginLeft]: Margin kiri dalam mm (default: 3mm)
+  /// - [marginTop]: Margin atas dalam mm (default: 3mm)
+  /// - [marginRight]: Margin kanan dalam mm (default: 3mm)
+  /// - [marginBottom]: Margin bawah dalam mm (default: 3mm)
+  /// 
+  /// ## Format Invoice:
+  /// - Customer name (paling atas)
+  /// - Timestamp (tanggal jam)
+  /// - Menu name (font besar)
+  /// - Modifications & note (font kecil, dipisah koma)
+  /// 
+  /// ## Contoh penggunaan:
+  /// ```dart
+  /// final menuItem = MenuItemModel(
+  ///   menuName: 'Nasi Goreng Spesial',
+  ///   modifications: ['Extra Pedas', 'Tanpa Bawang'],
+  ///   note: 'Jangan terlalu asin',
+  ///   customerName: 'John Doe',
+  /// );
+  /// 
+  /// final invoiceSticker = CustomStickerPrinter.createInvoiceSticker(
+  ///   menuItem: menuItem,
+  ///   widthMm: 58,
+  ///   gapMm: 3,
+  ///   marginLeft: 3,
+  ///   marginTop: 3,
+  ///   marginRight: 3,
+  ///   marginBottom: 3,
+  /// );
+  /// 
+  /// await pos.printTspl(PosPrinterRole.sticker, invoiceSticker);
+  /// ```
+  static String createInvoiceSticker({
+    required MenuItemModel menuItem,
+    double widthMm = 58,
+    double gapMm = 3,
+    double marginLeft = 3,
+    double marginTop = 3,
+    double marginRight = 3,
+    double marginBottom = 3,
+  }) {
+    final now = DateTime.now();
+    List<StickerText> texts = [];
+    double currentY = 0;
+    
+    // Helper untuk nama bulan
+    String getMonthName(int month) {
+      const months = [
+        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      ];
+      return months[month];
+    }
+    
+    // Helper untuk wrap text
+    List<String> wrapText(String text, int maxLength) {
+      if (text.length <= maxLength) return [text];
+      
+      List<String> lines = [];
+      String currentLine = '';
+      List<String> words = text.split(' ');
+      
+      for (String word in words) {
+        if ((currentLine + word).length <= maxLength) {
+          currentLine += (currentLine.isEmpty ? '' : ' ') + word;
+        } else {
+          if (currentLine.isNotEmpty) {
+            lines.add(currentLine);
+            currentLine = word;
+          } else {
+            // Word terlalu panjang, potong paksa
+            lines.add(word.substring(0, maxLength));
+            currentLine = word.substring(maxLength);
+          }
+        }
+      }
+      
+      if (currentLine.isNotEmpty) {
+        lines.add(currentLine);
+      }
+      
+      return lines;
+    }
+    
+    // 1. Customer name (paling atas, font kecil)
+    texts.add(StickerText(
+      menuItem.customerName, 
+      x: 0, y: currentY, 
+      font: 1, size: 1, 
+      alignment: 'left'
+    ));
+    currentY += 4;
+    
+    // 2. Timestamp
+    final dateStr = '${now.day} ${getMonthName(now.month)} ${now.year} : ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    texts.add(StickerText(
+      dateStr, 
+      x: 0, y: currentY, 
+      font: 1, size: 1, 
+      alignment: 'left'
+    ));
+    currentY += 4;
+    
+    // 3. Menu name (font besar)
+    texts.add(StickerText(
+      menuItem.menuName, 
+      x: 0, y: currentY, 
+      font: 3, size: 1, 
+      alignment: 'left'
+    ));
+    currentY += 6;
+    
+    // 4. Modifications & note (gabung dengan koma, font kecil)
+    List<String> allModsAndNotes = [];
+    if (menuItem.modifications.isNotEmpty) {
+      allModsAndNotes.addAll(menuItem.modifications);
+    }
+    if (menuItem.note != null && menuItem.note!.isNotEmpty) {
+      allModsAndNotes.add(menuItem.note!);
+    }
+    
+    if (allModsAndNotes.isNotEmpty) {
+      final allText = allModsAndNotes.join(', ');
+      final wrappedMods = wrapText(allText, 30); // max 30 char per line untuk font kecil
+
+      for (String line in wrappedMods) {
+        texts.add(StickerText(
+          line, 
+          x: 0, y: currentY, 
+          font: 1, size: 1, 
+          alignment: 'left'
+        ));
+        currentY += 3;
+      }
+    }
+
+    // Hitung tinggi dinamis berdasarkan content
+    final calculatedHeight = (currentY + marginTop + marginBottom + 3).clamp(20.0, 50.0);
+    
+    // Generate TSPL command string
+    return createSticker(
+      widthMm: widthMm,
+      heightMm: calculatedHeight,
+      gapMm: gapMm,
+      texts: texts,
+      marginLeft: marginLeft,
+      marginTop: marginTop,
+      marginRight: marginRight,
+      marginBottom: marginBottom,
+    );
+  }
+
+  /// Helper method untuk membuat String TSPL dari texts
+  static String createSticker({
+    required double widthMm,
+    required double heightMm,
+    required double gapMm,
+    required List<StickerText> texts,
+    double marginLeft = 0,
+    double marginTop = 0,
+    double marginRight = 0,
+    double marginBottom = 0,
+    List<StickerBarcode>? barcodes,
+  }) {
+    final tspl = TsplBuilder();
+    
+    // Setup sticker
+    tspl.size(widthMm.round(), heightMm.round());
+    tspl.gap(gapMm.round(), 0);
+    tspl.density(8);
+
+    // Add texts
+    for (final text in texts) {
+      double actualX = text.x + marginLeft;
+      double actualY = text.y + marginTop;
+      
+      // Handle alignment
+      if (text.alignment == 'center') {
+        actualX = (widthMm / 2) + text.x;
+      } else if (text.alignment == 'right') {
+        actualX = widthMm - marginRight + text.x;
+      }
+      
+      // Convert mm to dots (8 dots per mm for TSPL)
+      final xDots = (actualX * 8).round();
+      final yDots = (actualY * 8).round();
+      
+      tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size, text.text);
+    }
+
+    // Add barcodes if any
+    if (barcodes != null) {
+      for (final barcode in barcodes) {
+        final xDots = ((barcode.x + marginLeft) * 8).round();
+        final yDots = ((barcode.y + marginTop) * 8).round();
+        final heightDots = (barcode.height * 8).round();
+        
+        if (barcode.type == 'QR') {
+          tspl.qrCode(xDots, yDots, 2, 4, 'M', barcode.data);
+        } else {
+          tspl.barcode(xDots, yDots, barcode.type, heightDots, 1, barcode.data);
+        }
+      }
+    }
+    
+    tspl.printLabel(1);
+    
+    return String.fromCharCodes(tspl.build());
   }
 }
