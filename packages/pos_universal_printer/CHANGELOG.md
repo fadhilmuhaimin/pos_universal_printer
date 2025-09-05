@@ -26,6 +26,12 @@
 - Improved public documentation untuk adoption yang lebih mudah
 - Added comprehensive parameter guides
 
+## 0.2.2
+
+* Update README to full English for international developers
+* Improved examples with English menu items
+* Enhanced professional documentation
+
 ## 0.2.1
 
 🔧 **Documentation & API Fixes**

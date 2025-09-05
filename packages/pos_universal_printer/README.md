@@ -136,33 +136,33 @@ class PrinterManager {
 
 ### Level 1: Super Simple (ONE-LINER) 🚀
 
-Metode paling mudah untuk print invoice sticker restoran. Cocok untuk pemula yang ingin langsung pakai tanpa ribet:
+The easiest method to print restaurant invoice stickers. Perfect for beginners who want to get started quickly:
 
 ```dart
 import 'package:pos_universal_printer/pos_universal_printer.dart';
 
-// Print invoice super simple - hanya perlu 4 parameter!
+// Print invoice super simple - only 4 parameters needed!
 await CustomStickerPrinter.printInvoice(
   printer: printer,
   role: PosPrinterRole.sticker,
   customer: 'John Doe',
-  menu: 'Nasi Goreng Spesial',
-  details: 'Extra Pedas, Tanpa Bawang, Jangan asin',
+  menu: 'Special Fried Rice',
+  details: 'Extra Spicy, No Onions, Low Salt',
 );
 ```
 
 ### Level 2: Template with Options (CUSTOMIZABLE) ⚙️
 
-Template invoice dengan opsi customization untuk user menengah. Bisa atur ukuran sticker, font, dan spacing:
+Invoice template with customization options for intermediate users. Configure sticker size, fonts, and spacing:
 
 ```dart
 await CustomStickerPrinter.printInvoiceSticker(
   printer: printer,
   role: PosPrinterRole.sticker,
   customerName: 'John Doe',
-  menuName: 'Nasi Goreng Spesial',
-  modifications: ['Extra Pedas', 'Tanpa Bawang'],
-  note: 'Jangan terlalu asin',
+  menuName: 'Special Fried Rice',
+  modifications: ['Extra Spicy', 'No Onions'],
+  note: 'Low Salt',
   stickerSize: StickerSize.mm58x40,
   fontSize: FontSize.large,
 );
@@ -174,16 +174,16 @@ await CustomStickerPrinter.printInvoiceSticker(
 
 ### Level 3: Multi-Menu Restaurant Style (PROFESSIONAL) 👨‍🍳
 
-Print multiple menu items sekaligus, setiap menu = 1 sticker terpisah. Perfect untuk restoran:
+Print multiple menu items at once, each menu = 1 separate sticker. Perfect for restaurants:
 
 ```dart
-// Data menu items
+// Menu items data
 List<MenuItem> menuItems = [
-  MenuItem('Nasi Goreng Spesial', ['Extra Pedas', 'Tanpa Bawang'], 'Jangan terlalu asin'),
-  MenuItem('Es Teh Manis', ['Gelas Besar'], 'Banyak es'),
+  MenuItem('Special Fried Rice', ['Extra Spicy', 'No Onions'], 'Low Salt'),
+  MenuItem('Iced Sweet Tea', ['Large Cup'], 'Extra Ice'),
 ];
 
-// Print semua menu sekaligus
+// Print all menu items at once
 await CustomStickerPrinter.printRestaurantOrder(
   printer: printer,
   role: PosPrinterRole.sticker,
@@ -194,7 +194,7 @@ await CustomStickerPrinter.printRestaurantOrder(
 
 ### Level 4: Full Custom (ADVANCED) 💪
 
-Untuk developer yang butuh kontrol penuh atas layout dan positioning:
+For developers who need full control over layout and positioning:
 
 ```dart
 await CustomStickerPrinter.printSticker(
@@ -218,7 +218,7 @@ await CustomStickerPrinter.printSticker(
 ```
 
 **Available Parameters:**
-- **Margins**: `marginLeft`, `marginTop`, `marginRight`, `marginBottom` (dalam mm)
+- **Margins**: `marginLeft`, `marginTop`, `marginRight`, `marginBottom` (in mm)
 - **Alignment**: `'left'`, `'center'`, `'right'`
 - **Font**: 1-8 (1=smallest, 8=largest)
 - **Size**: 1-8 (scale multiplier)
