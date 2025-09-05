@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos_universal_printer/pos_universal_printer.dart';
+import 'package:pos_universal_printer/src/helpers/custom_sticker.dart';
 
 // 🧾 Model untuk Invoice Menu
 class OrderItem {
@@ -677,7 +678,43 @@ class _MyHomePageState extends State<MyHomePage> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text('🔥 KIRI-KANAN SAME LINE (HOT!):', 
+                const Text('� LEVEL 1: SUPER SIMPLE (ONE-LINER):', 
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                Wrap(
+                  spacing: 8.0,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _testLevel1SimpleInvoice(role),
+                      child: const Text('Simple Invoice'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text('⚙️ LEVEL 2: TEMPLATE WITH OPTIONS:', 
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                Wrap(
+                  spacing: 8.0,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _testLevel2TemplateInvoice(role),
+                      child: const Text('Template Invoice'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text('👨‍🍳 LEVEL 3: MULTI-MENU RESTAURANT:', 
+                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
+                Wrap(
+                  spacing: 8.0,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _testLevel3RestaurantOrder(role),
+                      child: const Text('Restaurant Order'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text('💪 LEVEL 4: FULL CUSTOM (ADVANCED):', 
                   style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
                 Wrap(
                   spacing: 8.0,
@@ -725,6 +762,46 @@ class _MyHomePageState extends State<MyHomePage> {
       controller.dispose();
     }
     super.dispose();
+  }
+  
+  // 🚀 LEVEL 1: Super Simple Invoice (ONE-LINER)
+  void _testLevel1SimpleInvoice(PosPrinterRole role) {
+    CustomStickerPrinter.printInvoice(
+      printer: printer,
+      role: role,
+      customer: 'John Doe',
+      menu: 'Nasi Goreng Spesial',
+      details: 'Extra Pedas, Tanpa Bawang, Jangan asin',
+    );
+  }
+
+  // ⚙️ LEVEL 2: Template with Options
+  void _testLevel2TemplateInvoice(PosPrinterRole role) {
+    CustomStickerPrinter.printInvoiceSticker(
+      printer: printer,
+      role: role,
+      customerName: 'John Doe',
+      menuName: 'Nasi Goreng Spesial',
+      modifications: ['Extra Pedas', 'Tanpa Bawang'],
+      note: 'Jangan terlalu asin',
+      stickerSize: StickerSize.mm58x40,
+      fontSize: FontSize.large,
+    );
+  }
+
+  // 👨‍🍳 LEVEL 3: Multi-Menu Restaurant Style  
+  void _testLevel3RestaurantOrder(PosPrinterRole role) {
+    List<MenuItem> menuItems = [
+      MenuItem('Nasi Goreng Spesial', ['Extra Pedas', 'Tanpa Bawang'], 'Jangan terlalu asin'),
+      MenuItem('Es Teh Manis', ['Gelas Besar'], 'Banyak es'),
+    ];
+
+    CustomStickerPrinter.printRestaurantOrder(
+      printer: printer,
+      role: role,
+      customerName: 'John Doe',
+      menuItems: menuItems,
+    );
   }
 
 }

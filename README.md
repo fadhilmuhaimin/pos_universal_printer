@@ -1,6 +1,6 @@
 # pos_universal_printer
 
-A Flutter plugin for printing POS receipts and labels on various thermal printers. Supports ESC/POS (receipts), TSPL and CPCL (labels). Designed for multi‑role routing (cashier, kitchen, sticker) with job queue, retries, Bluetooth Classic (Android), and TCP/IP (Android & iOS).
+A Flutter plugin for printing POS receipts and labels on various thermal printers. Supports ESC/POS (receipts), TSPL and CPCL (labels). Designed for multi‑role routing (cashi### 4) Print TSPL label (direct commands)r, kitchen, sticker) with job queue, retries, Bluetooth Classic (Android), and TCP/IP (Android & iOS).
 
 ## Key features
 
@@ -126,7 +126,38 @@ final selected = btDevices.first; // choose via your UI
 await pos.registerDevice(PosPrinterRole.kitchen, selected);
 ```
 
-### 2) Print ESC/POS receipt (Builder)
+### 2) Print custom sticker labels (NEW!)
+
+```dart
+// Template siap pakai - paling mudah!
+CustomStickerPrinter.printProductSticker40x30(
+  printer: pos,
+  role: PosPrinterRole.sticker,
+  productName: 'KOPI ARABICA',
+  productCode: 'KA001',
+  price: 'Rp 35.000',
+  barcodeData: '1234567890',
+);
+
+// Custom layout - full control  
+CustomStickerPrinter.printSticker(
+  printer: pos,
+  role: PosPrinterRole.sticker,
+  width: 40,    // mm - sesuai media fisik!
+  height: 30,   // mm - sesuai media fisik!
+  texts: [
+    StickerText('JUDUL BESAR', x: 0, y: 0, font: 3),
+    StickerText('Detail info', x: 0, y: 8, font: 2),
+  ],
+  barcode: StickerBarcode('123456', x: 0, y: 16, height: 8),
+);
+```
+
+**📖 Dokumentasi lengkap custom sticker:** [CUSTOM_STICKER_API.md](CUSTOM_STICKER_API.md)
+
+**🔧 Troubleshooting text terbalik:** [PRINT_ORIENTATION_FIX.md](PRINT_ORIENTATION_FIX.md)
+
+### 3) Print ESC/POS receipt (Builder)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/escpos/builder.dart';
@@ -173,8 +204,11 @@ import 'package:pos_universal_printer/src/protocols/tspl/builder.dart';
 
 final tspl = TsplBuilder();
 tspl.size(58, 40);
-tspl.gap(2, 0);
+tspl.gap(2, 0); // adjust to your media's real gap (mm)
+tspl.direction(1);
+tspl.reference(0, 0);
 tspl.density(8);
+tspl.cls();
 tspl.text(20, 20, 3, 0, 1, 1, 'Label 58x40');
 tspl.barcode(20, 60, 'CODE128', 60, 1, '1234567890');
 tspl.printLabel(1);
@@ -182,11 +216,34 @@ tspl.printLabel(1);
 pos.printTspl(PosPrinterRole.sticker, String.fromCharCodes(tspl.build()));
 ```
 
+**⚠️ Orientation Issue Fix**: If text appears upside down, use `DIRECTION 0` instead of `DIRECTION 1`:
+
+```dart
+// For normal text orientation (not upside down)
+final sb = StringBuffer();
+sb.writeln('SIZE 58 mm, 40 mm');
+sb.writeln('GAP 2 mm, 0 mm');
+sb.writeln('DIRECTION 0');      // 0 = normal, 1 = reversed
+sb.writeln('REFERENCE 0,0');
+sb.writeln('DENSITY 8');
+sb.writeln('CLS');
+sb.writeln('TEXT 20,20,"3",0,1,1,"Normal Text"');
+sb.writeln('PRINT 1');
+pos.printTspl(PosPrinterRole.sticker, sb.toString());
+```
+
 Or send TSPL string samples directly:
 
 ```dart
-// Simpler with the built‑in helper:
+// Simpler with the built‑in helpers:
 pos.printTspl(PosPrinterRole.sticker, TsplBuilder.sampleLabel58x40());
+// For 40x30 mm labels (common size), tune the gap if needed (default 3 mm):
+pos.printTspl(PosPrinterRole.sticker, TsplBuilder.sampleLabel40x30());
+
+// If your printer feeds an extra blank label:
+// 1) Calibrate the media from the printer panel (GAP/BLACK MARK detect).
+// 2) Adjust GAP in mm to match your real inter‑label gap (e.g. gap 2 or 3).
+// 3) Ensure each job starts with CLS and sets DIRECTION/REFERENCE.
 ```
 
 ### 5) Print CPCL label (Zebra)
@@ -259,6 +316,52 @@ pos.printReceipt(role, items, columns: 32);
 - iOS cannot use Bluetooth SPP: platform limitation. Use TCP.
 - Nothing printed via TCP: verify IP/port (usually 9100) and printer mode (ESC/POS vs TSPL/CPCL).
 - Paper cut not working: not all printers support full cut; use tear bar or device‑specific command.
+
+### TSPL print issues (sticker labels)
+
+**Text appears upside down/inverted:**
+- Change `DIRECTION 1` to `DIRECTION 0` in your TSPL commands
+- Test both orientations to see which works with your printer model
+
+**Label positioning problems:**
+- Ensure `CLS` is called before drawing elements
+- Set `REFERENCE 0,0` for consistent positioning
+- Adjust coordinates in TEXT/BARCODE commands
+
+**Extra blank labels printing:**
+- Calibrate media detection on printer (GAP/BLACK MARK)
+- Adjust GAP value to match your actual label gap (typically 2-3mm)
+- Use exactly one `PRINT 1` command per job
+
+**Example fixed orientation code:**
+```dart
+final sb = StringBuffer();
+sb.writeln('SIZE 58 mm, 40 mm');
+sb.writeln('GAP 2 mm, 0 mm');
+sb.writeln('DIRECTION 0');      // Try 0 first, then 1 if still wrong
+sb.writeln('REFERENCE 0,0');
+sb.writeln('DENSITY 8');
+sb.writeln('CLS');
+sb.writeln('TEXT 20,20,"3",0,1,1,"NORMAL TEXT"');
+sb.writeln('PRINT 1');
+pos.printTspl(PosPrinterRole.sticker, sb.toString());
+```
+
+**Testing orientation in the example app:**
+- Use "Test TSPL" button for the original implementation (may appear upside down)
+- Use "TSPL Fixed" button for the corrected orientation (DIRECTION 0)
+- Use "Test Both" button to print both orientations and compare
+- iOS cannot use Bluetooth SPP: platform limitation. Use TCP.
+- Nothing printed via TCP: verify IP/port (usually 9100) and printer mode (ESC/POS vs TSPL/CPCL).
+- Paper cut not working: not all printers support full cut; use tear bar or device‑specific command.
+
+### TSPL layout tips (40×30 mm)
+
+- 203 dpi ≈ 8 dots/mm, so 40×30 mm ≈ 320×240 dots.
+- Set REFERENCE(x,y) to create top/left margins in dots.
+- For right alignment, estimate text width: chars × 24 × xMultiplier (font 3 ~24 dots/char).
+- Bottom placement: y ≈ innerHeight − charHeight.
+- Always `CLS` before drawing.
 
 ## License
 

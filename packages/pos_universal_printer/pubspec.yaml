@@ -1,6 +1,6 @@
 name: pos_universal_printer
 description: A comprehensive Flutter plugin for thermal receipt and label printing on POS systems. Supports ESC/POS receipts, TSPL/CPCL labels with custom sticker API, multi-role printer mapping, Bluetooth Classic, TCP/IP connectivity with job queue and retry mechanisms.
-version: 0.2.1
+version: 0.2.2
 homepage: https://github.com/fadhilmuhaimin/pos_universal_printer
 repository: https://github.com/fadhilmuhaimin/pos_universal_printer/tree/main/packages/pos_universal_printer
 environment:

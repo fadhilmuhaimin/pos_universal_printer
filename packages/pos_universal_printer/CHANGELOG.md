@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.2.2
+
+### 🚀 NEW: 3-Level API for Better User Experience
+
+**LEVEL 1: Super Simple (ONE-LINER)**
+- Added `CustomStickerPrinter.printInvoice()` - Print invoice dengan 1 line code
+- Perfect untuk pemula yang ingin langsung pakai
+
+**LEVEL 2: Template with Options (CUSTOMIZABLE)**  
+- Added `CustomStickerPrinter.printInvoiceSticker()` - Template dengan opsi customization
+- Added `StickerSize` enum: `mm40x30`, `mm58x40`, `mm40x25`, `mm32x20`
+- Added `FontSize` enum: `small`, `medium`, `large`
+
+**LEVEL 3: Multi-Menu Restaurant Style (PROFESSIONAL)**
+- Added `CustomStickerPrinter.printRestaurantOrder()` - Print multiple menu items
+- Added `MenuItem` class untuk data structure
+- Setiap menu = 1 sticker terpisah (perfect untuk restoran)
+
+**LEVEL 4: Full Custom (ADVANCED)**
+- Existing `CustomStickerPrinter.printSticker()` dengan kontrol penuh
+
+### 📖 Documentation 
+- Updated README dengan 4 level complexity examples
+- Improved public documentation untuk adoption yang lebih mudah
+- Added comprehensive parameter guides
+
 ## 0.2.1
 
 🔧 **Documentation & API Fixes**

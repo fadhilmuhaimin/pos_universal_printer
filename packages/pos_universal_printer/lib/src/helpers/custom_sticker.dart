@@ -1,5 +1,42 @@
 import '../../pos_universal_printer.dart';
 
+/// Helper classes for simple invoice printing
+class MenuItem {
+  final String name;
+  final List<String> modifications;
+  final String? note;
+  
+  MenuItem(this.name, this.modifications, [this.note]);
+}
+
+/// Predefined sticker sizes for easy use
+enum StickerSize {
+  mm40x30(40, 30),
+  mm58x40(58, 40),
+  mm40x25(40, 25),
+  mm32x20(32, 20);
+  
+  const StickerSize(this.width, this.height);
+  final double width;
+  final double height;
+  
+  ({double width, double height}) get dimensions => (width: width, height: height);
+}
+
+/// Font sizes with predefined font combinations
+enum FontSize {
+  small(1, 2, 4),
+  medium(2, 4, 6),
+  large(4, 6, 8);
+  
+  const FontSize(this.smallFont, this.mediumFont, this.largeFont);
+  final int smallFont;
+  final int mediumFont;
+  final int largeFont;
+  
+  ({int small, int medium, int large}) get fonts => (small: smallFont, medium: mediumFont, large: largeFont);
+}
+
 /// Model untuk menu item pada invoice sticker
 class MenuItemModel {
   final String menuName;
@@ -716,5 +753,245 @@ class CustomStickerPrinter {
     tspl.printLabel(1);
     
     return String.fromCharCodes(tspl.build());
+  }
+
+  /// **Level 1: Super Simple Invoice (ONE-LINER)**
+  /// 
+  /// Method paling mudah untuk print invoice sticker restoran.
+  /// Cocok untuk pemula yang ingin langsung pakai tanpa ribet.
+  /// 
+  /// ```dart
+  /// await CustomStickerPrinter.printInvoice(
+  ///   printer: printer,
+  ///   role: PosPrinterRole.sticker,
+  ///   customer: 'John Doe',
+  ///   menu: 'Nasi Goreng Spesial',
+  ///   details: 'Extra Pedas, Tanpa Bawang, Jangan asin',
+  /// );
+  /// ```
+  static Future<void> printInvoice({
+    required PosUniversalPrinter printer,
+    required PosPrinterRole role,
+    required String customer,
+    required String menu,
+    String? details,
+    double widthMm = 40,
+    double heightMm = 30,
+    double gapMm = 3,
+  }) async {
+    final now = DateTime.now();
+    final dateStr = '${now.day}/${now.month}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    
+    List<StickerText> texts = [
+      // Customer name
+      StickerText(customer, x: 2, y: 0, font: 1, size: 1, alignment: 'left'),
+      // Date time
+      StickerText(dateStr, x: 2, y: 4, font: 1, size: 1, alignment: 'left'),
+      // Menu name (big font)
+      StickerText(menu, x: 2, y: 8, font: 4, size: 1, alignment: 'left'),
+    ];
+    
+    // Details if provided
+    if (details != null && details.isNotEmpty) {
+      texts.add(StickerText(details, x: 2, y: 16, font: 1, size: 1, alignment: 'left'));
+    }
+    
+    await printSticker(
+      printer: printer,
+      role: role,
+      width: widthMm,
+      height: heightMm,
+      gap: gapMm,
+      marginLeft: 1,
+      marginTop: 1,
+      texts: texts,
+    );
+  }
+
+  /// **Level 2: Template with Options (CUSTOMIZABLE)**
+  /// 
+  /// Template invoice dengan opsi customization untuk user menengah.
+  /// Bisa atur ukuran sticker, font, dan spacing.
+  /// 
+  /// ```dart
+  /// await CustomStickerPrinter.printInvoiceSticker(
+  ///   printer: printer,
+  ///   role: PosPrinterRole.sticker,
+  ///   customerName: 'John Doe',
+  ///   menuName: 'Nasi Goreng Spesial',
+  ///   modifications: ['Extra Pedas', 'Tanpa Bawang'],
+  ///   note: 'Jangan terlalu asin',
+  ///   stickerSize: StickerSize.mm58x40,
+  ///   fontSize: FontSize.large,
+  /// );
+  /// ```
+  static Future<void> printInvoiceSticker({
+    required PosUniversalPrinter printer,
+    required PosPrinterRole role,
+    required String customerName,
+    required String menuName,
+    List<String> modifications = const [],
+    String? note,
+    StickerSize stickerSize = StickerSize.mm40x30,
+    FontSize fontSize = FontSize.medium,
+    double gapMm = 3,
+    double marginMm = 2,
+  }) async {
+    final now = DateTime.now();
+    final dateStr = '${now.day}/${now.month}/${now.year} ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    
+    // Get size from enum
+    final size = stickerSize.dimensions;
+    final fonts = fontSize.fonts;
+    
+    List<StickerText> texts = [];
+    double currentY = 0;
+    
+    // Customer name
+    texts.add(StickerText(customerName, x: marginMm, y: currentY, font: fonts.small, size: 1, alignment: 'left'));
+    currentY += 4;
+    
+    // Date time
+    texts.add(StickerText(dateStr, x: marginMm, y: currentY, font: fonts.small, size: 1, alignment: 'left'));
+    currentY += 4;
+    
+    // Menu name (big)
+    texts.add(StickerText(menuName, x: marginMm, y: currentY, font: fonts.large, size: 1, alignment: 'left'));
+    currentY += 6;
+    
+    // Modifications + note
+    List<String> allDetails = [];
+    allDetails.addAll(modifications);
+    if (note != null && note.isNotEmpty) allDetails.add(note);
+    
+    if (allDetails.isNotEmpty) {
+      final detailText = allDetails.join(', ');
+      texts.add(StickerText(detailText, x: marginMm, y: currentY, font: fonts.small, size: 1, alignment: 'left'));
+    }
+    
+    await printSticker(
+      printer: printer,
+      role: role,
+      width: size.width,
+      height: size.height,
+      gap: gapMm,
+      marginLeft: marginMm,
+      marginTop: marginMm,
+      texts: texts,
+    );
+  }
+
+  /// **Level 3: Multi-Menu Invoice (RESTAURANT STYLE)**
+  /// 
+  /// Print multiple menu items sekaligus, setiap menu = 1 sticker terpisah.
+  /// Seperti implementasi di main.dart yang sudah perfect.
+  /// 
+  /// ```dart
+  /// await CustomStickerPrinter.printRestaurantOrder(
+  ///   printer: printer,
+  ///   role: PosPrinterRole.sticker,
+  ///   customerName: 'John Doe',
+  ///   menuItems: [
+  ///     MenuItem('Nasi Goreng', ['Extra Pedas'], 'Jangan asin'),
+  ///     MenuItem('Es Teh Manis', ['Gelas Besar'], 'Banyak es'),
+  ///   ],
+  /// );
+  /// ```
+  static Future<void> printRestaurantOrder({
+    required PosUniversalPrinter printer,
+    required PosPrinterRole role,
+    required String customerName,
+    required List<MenuItem> menuItems,
+    double widthMm = 40,
+    double gapMm = 3,
+    double marginMm = 1,
+  }) async {
+    final now = DateTime.now();
+    
+    // Print each menu item as separate sticker
+    for (final menuItem in menuItems) {
+      List<StickerText> texts = [];
+      double currentY = 0;
+      
+      // Customer name (paling atas)
+      texts.add(StickerText(customerName, x: 12, y: currentY, font: 1, size: 1, alignment: 'left'));
+      currentY += 4;
+      
+      // Date time
+      final dateStr = '${now.day} ${_getMonthName(now.month)} ${now.year} : ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+      texts.add(StickerText(dateStr, x: 12, y: currentY, font: 1, size: 1, alignment: 'left'));
+      currentY += 4;
+      
+      // Menu name (font besar)
+      texts.add(StickerText(menuItem.name, x: 12, y: currentY, font: 8, size: 1, alignment: 'left'));
+      currentY += 4;
+      
+      // Modifications + note (gabung dengan koma)
+      List<String> allDetails = [];
+      allDetails.addAll(menuItem.modifications);
+      if (menuItem.note != null && menuItem.note!.isNotEmpty) {
+        allDetails.add(menuItem.note!);
+      }
+      
+      if (allDetails.isNotEmpty) {
+        final detailText = allDetails.join(', ');
+        final wrappedLines = _wrapText(detailText, 30);
+        
+        for (String line in wrappedLines) {
+          texts.add(StickerText(line, x: 12, y: currentY, font: 2, size: 1, alignment: 'left'));
+          currentY += 3;
+        }
+      }
+      
+      // Dynamic height
+      final calculatedHeight = (currentY + 6).clamp(15.0, 30.0);
+      
+      await printSticker(
+        printer: printer,
+        role: role,
+        width: widthMm,
+        height: calculatedHeight,
+        gap: gapMm,
+        marginLeft: marginMm,
+        marginTop: marginMm,
+        marginRight: marginMm,
+        marginBottom: marginMm,
+        texts: texts,
+      );
+    }
+  }
+
+  // Helper methods
+  static String _getMonthName(int month) {
+    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month];
+  }
+  
+  static List<String> _wrapText(String text, int maxLength) {
+    if (text.length <= maxLength) return [text];
+    
+    List<String> lines = [];
+    String currentLine = '';
+    List<String> words = text.split(' ');
+    
+    for (String word in words) {
+      if ((currentLine + word).length <= maxLength) {
+        currentLine += (currentLine.isEmpty ? '' : ' ') + word;
+      } else {
+        if (currentLine.isNotEmpty) {
+          lines.add(currentLine);
+          currentLine = word;
+        } else {
+          lines.add(word.substring(0, maxLength));
+          currentLine = word.substring(maxLength);
+        }
+      }
+    }
+    
+    if (currentLine.isNotEmpty) {
+      lines.add(currentLine);
+    }
+    
+    return lines;
   }
 }
