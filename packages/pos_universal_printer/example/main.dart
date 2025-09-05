@@ -70,70 +70,93 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
-  void dispose() {
-    for (final c in _ipControllers.values) {
-      c.dispose();
-    }
-    for (final c in _portControllers.values) {
-      c.dispose();
-    }
-    _logTimer?.cancel();
-    printer.dispose();
-    super.dispose();
-  }
-
-  Future<void> _ensureBtPermissions() async {
-    await [
-      Permission.bluetoothScan,
-      Permission.bluetoothConnect,
-    ].request();
-  }
-
-  Future<void> _scanBluetooth() async {
-    await _ensureBtPermissions();
-    final results = await printer.scanBluetooth().toList();
-    setState(() {
-      _bluetoothDevices = results;
-    });
-  }
-
-  Future<void> _register(PosPrinterRole role) async {
-    final type = _selectedType[role];
-    if (type == null) return;
-    PrinterDevice device;
-    if (type == PrinterType.bluetooth) {
-      await _ensureBtPermissions();
-      final selected = _selectedDevice[role];
-      if (selected == null) return;
-      device = selected;
-    } else {
-      final ip = _ipControllers[role]!.text.trim();
-      final portStr = _portControllers[role]!.text.trim();
-      final port = int.tryParse(portStr) ?? 9100;
-      device = PrinterDevice(
-        id: '$ip:$port',
-        name: ip,
-        type: PrinterType.tcp,
-        address: ip,
-        port: port,
-      );
-    }
-    await printer.registerDevice(role, device);
-    setState(() {});
-  }
-
-  void _testEsc(PosPrinterRole role) {
-    final builder = EscPosBuilder();
-    builder.text('TEST ESC/POS', bold: true, align: PosAlign.center);
-    builder.text('Printer role: ${role.name}');
-    builder.feed(2);
-    builder.cut();
-    printer.printEscPos(role, builder);
-  }
-
   void _testTspl(PosPrinterRole role) {
-    final cmds = TsplBuilder.sampleLabel58x40();
-    printer.printTspl(role, cmds);
+    // Satu label 40x30 mm (PRINT 1), orientasi sama seperti "Label 58x40",
+    // margin kiri/atas seperti sample (mulai dari kiri-atas), isi penuh baris 'A'.
+
+    // 1) Media setup (203 dpi -> 8 dots/mm). 300 dpi -> 12 dots/mm.
+    const int dotsPerMm = 8;
+    const int widthMm = 40;
+    const int heightMm = 30;
+
+    // 2) Margin kiri/atas mirip sample (≈20 dot ≈2.5 mm)
+    const int leftMargin = 20;
+    const int topMargin = 20;
+    const int rightMargin = 0;
+    const int bottomMargin = 0;
+
+    // 3) Area dalam (dot)
+    final int widthDots = widthMm * dotsPerMm;   // 320
+    final int heightDots = heightMm * dotsPerMm; // 240
+    final int innerWidth = widthDots - leftMargin - rightMargin;
+    final int innerHeight = heightDots - topMargin - bottomMargin;
+
+    // 4) Font 3 @1x ≈ 24x24 dot/karakter
+    const int charW = 24;
+    const int charH = 24;
+    final int columns = (innerWidth ~/ charW).clamp(1, 999);
+    final int rows = (innerHeight ~/ charH).clamp(1, 999);
+    final String line = 'A' * columns;
+
+    // 5) Rangkai TSPL (tanpa builder sample)
+    final sb = StringBuffer();
+    sb.writeln('SIZE $widthMm mm, $heightMm mm');
+    sb.writeln('GAP 3 mm, 0 mm'); // sesuaikan 2–4 mm + kalibrasi media
+    sb.writeln('DIRECTION 1');    // ikuti orientasi Label 58x40
+    sb.writeln('REFERENCE $leftMargin,$topMargin');
+    sb.writeln('SPEED 2');
+    sb.writeln('DENSITY 12');
+    sb.writeln('CLS');
+
+    // 6) Cetak baris 'A' dari atas ke bawah (tidak terbalik)
+    for (int r = 0; r < rows; r++) {
+      final int y = r * charH;
+      sb.writeln('TEXT 0,$y,"3",0,1,1,"$line"');
+    }
+    sb.writeln('PRINT 1'); // pastikan hanya 1 lembar
+
+    printer.printTspl(role, sb.toString());
+  }
+    const int charW = 24 * xMul;
+    const int charH = 24 * yMul;
+
+    // 5) Compute inner drawing area after margins
+    final int innerWidth = widthDots - leftMargin - rightMargin;
+    final int innerHeight = heightDots - topMargin - bottomMargin;
+
+    // 6) Build TSPL
+    final tspl = TsplBuilder();
+    tspl.size(widthMm, heightMm);
+  tspl.gap(2, 0);      // GAP label; kalibrasi printer + sesuaikan 2–4 mm
+    tspl.direction(1);   // Orientation like sampleLabel58x40
+  tspl.reference(leftMargin, topMargin); // Margin kiri/atas ala sample
+  tspl.speed(2);       // Kecepatan rendah -> kualitas lebih stabil
+  tspl.density(12);    // 1–15; lebih tinggi -> lebih gelap
+  tspl.cls();          // Wajib: bersihkan buffer sebelum gambar
+
+    // 7) Right-to-left full-width lines:
+    //    - Calculate how many characters fit exactly across the inner width.
+    //    - Right align: x = innerWidth - (columns*charW), so the last char reaches the right edge.
+    final int columns = (innerWidth ~/ charW).clamp(1, 999);
+    final String line = 'A' * columns; // use ASCII for compatibility
+    final int lineW = columns * charW;
+    final int xRightAligned = (innerWidth - lineW).clamp(0, innerWidth);
+
+    // 8) Number of rows that fit top-to-bottom
+    final int rows = (innerHeight ~/ charH).clamp(1, 999);
+
+    // 9) Draw each line. y increases by charH per line.
+    for (int r = 0; r < rows; r++) {
+      final int y = r * charH;
+      tspl.text(xRightAligned, y, font, 0, xMul, yMul, line);
+      // Tip: to add a visible row index for inspection (may reduce columns),
+      // you can print another small TEXT at (0,y) with the index.
+      // Example:
+      // tspl.text(0, y, 1, 0, 1, 1, '#${r+1}');
+    }
+
+    tspl.printLabel(1);
+    printer.printTspl(role, String.fromCharCodes(tspl.build()));
   }
 
   void _testCpcl(PosPrinterRole role) {
