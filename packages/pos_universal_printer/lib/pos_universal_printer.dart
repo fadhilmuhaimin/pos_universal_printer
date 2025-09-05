@@ -17,6 +17,8 @@ export 'src/protocols/escpos/builder.dart'
 export 'src/protocols/tspl/builder.dart' show TsplBuilder;
 export 'src/protocols/cpcl/builder.dart' show CpclBuilder;
 export 'src/renderer/receipt_renderer.dart' show ReceiptItem, ReceiptRenderer;
+export 'src/helpers/custom_sticker.dart' 
+    show StickerText, StickerBarcode, CustomStickerPrinter;
 
 /// Roles in a point‑of‑sale system. Each role can be mapped to a specific
 /// printer device so that receipts are routed correctly (e.g. cashier
