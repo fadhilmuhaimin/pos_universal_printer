@@ -132,7 +132,6 @@ class CompatImageUtils {
     final out = <int>[];
     // Each band is 24 dots tall.
     for (int bandTop = 0; bandTop < targetHeight; bandTop += 24) {
-      final bandHeight = (bandTop + 24 <= targetHeight) ? 24 : (targetHeight - bandTop);
       // ESC * m nL nH
       final nL = targetWidth % 256;
       final nH = targetWidth ~/ 256;

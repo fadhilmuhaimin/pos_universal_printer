@@ -93,12 +93,41 @@ class PosPrinterManager {
       } else if (conn.device.type == PrinterType.bluetooth) {
         // Try write once; if it fails, attempt disconnect -> reconnect -> retry once
         Future<bool> writeOnce() async {
-          final bool ok = await _channel.invokeMethod<bool>('writeBluetooth', {
-                'address': conn.device.address,
-                'bytes': data,
-              }) ??
-              false;
-          return ok;
+          // If payload > 1024, split into chunks; many SPP modules prefer <~990 bytes.
+          // Many low-cost modules become unstable >256 bytes per write.
+          // Lower chunk size and add pacing/backoff for reliability.
+          const int chunkSize = 256; 
+          if (data.length <= chunkSize) {
+            logger.add(LogLevel.debug, 'Attempting writeBluetooth single chunk ${data.length} bytes');
+            final bool ok = await _channel.invokeMethod<bool>('writeBluetooth', {
+                  'address': conn.device.address,
+                  'bytes': data,
+                }) ??
+                false;
+            logger.add(LogLevel.debug, 'writeBluetooth single returned: $ok');
+            return ok;
+          } else {
+            logger.add(LogLevel.debug, 'Attempting writeBluetooth multi-chunk total=${data.length} chunkSize=$chunkSize');
+            for (int offset = 0; offset < data.length; offset += chunkSize) {
+              final end = (offset + chunkSize < data.length) ? offset + chunkSize : data.length;
+              final slice = data.sublist(offset, end);
+              final bool ok = await _channel.invokeMethod<bool>('writeBluetooth', {
+                    'address': conn.device.address,
+                    'bytes': slice,
+                  }) ??
+                  false;
+              if (!ok) {
+                logger.add(LogLevel.warning, 'Chunk write failed at offset=$offset');
+                return false;
+              }
+              // pacing delay: longer if large total
+              int baseDelay = 25;
+              if (data.length > 4000) baseDelay = 40; // bigger job, more pacing
+              await Future.delayed(Duration(milliseconds: baseDelay));
+            }
+            logger.add(LogLevel.debug, 'All chunks sent OK');
+            return true;
+          }
         }
 
         bool ok = await writeOnce();
@@ -106,13 +135,15 @@ class PosPrinterManager {
           logger.add(LogLevel.warning,
               'Bluetooth write failed for ${conn.device.address}, retrying with reconnect');
           try {
+            logger.add(LogLevel.debug, 'Calling disconnectBluetooth for ${conn.device.address}');
             await _channel.invokeMethod('disconnectBluetooth', {
               'address': conn.device.address,
             });
-          } catch (_) {
-            // ignore
+          } catch (e) {
+            logger.add(LogLevel.error, 'Error invoking disconnectBluetooth: $e');
           }
           try {
+            logger.add(LogLevel.debug, 'Reconnecting to ${conn.device.address}');
             final bool reconnected = await _channel.invokeMethod<bool>(
                   'connectBluetooth',
                   {
@@ -121,6 +152,7 @@ class PosPrinterManager {
                 ) ??
                 false;
             conn.bluetoothConnected = reconnected;
+            logger.add(LogLevel.debug, 'Reconnected: $reconnected');
             if (reconnected) {
               ok = await writeOnce();
             }
@@ -129,6 +161,10 @@ class PosPrinterManager {
           }
         }
         if (!ok) {
+          // Fallback logging of payload size & first bytes for diagnostics
+          final headSample = data.take(16).map((e) => e.toRadixString(16).padLeft(2, '0')).join(' ');
+          logger.add(LogLevel.error,
+              'Bluetooth write ultimately failed. Payload length=${data.length}, head(16)=[$headSample]');
           throw Exception('Bluetooth write failed after reconnect');
         }
       }
