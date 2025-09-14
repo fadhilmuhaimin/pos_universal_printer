@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6
+
+### 🔧 Lint Fix
+- Wrap single-line if statements in `looksLikeImage` with braces (style hint from analyzer).
+- No behavioral changes; improves code style conformity.
+
 ## 0.2.5
 
 ### 📖 Documentation
