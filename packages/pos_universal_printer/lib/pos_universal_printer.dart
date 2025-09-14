@@ -19,6 +19,8 @@ export 'src/protocols/cpcl/builder.dart' show CpclBuilder;
 export 'src/renderer/receipt_renderer.dart' show ReceiptItem, ReceiptRenderer;
 export 'src/helpers/custom_sticker.dart' 
     show StickerText, StickerBarcode, CustomStickerPrinter, MenuItemModel;
+// Blue thermal compatibility facade
+export 'blue_thermal_compat.dart' show BlueThermalCompatPrinter, Size, Align, CompatLine;
 
 /// Roles in a point‑of‑sale system. Each role can be mapped to a specific
 /// printer device so that receipts are routed correctly (e.g. cashier
@@ -72,6 +74,12 @@ class PosUniversalPrinter {
 
   /// Returns a copy of the current logs.
   List<LogEntry> get logs => _logger.entries;
+
+  /// Internal: add a log entry (temporary public so compat layer can add
+  /// detailed diagnostics without exposing the Logger type itself).
+  void debugLog(LogLevel level, String message) {
+    _logger.add(level, message);
+  }
 
   /// Stream of log updates. Each time a log entry is added the entire
   /// list is emitted. Consumers can listen to this to update UI.

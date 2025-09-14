@@ -9,6 +9,11 @@ enum PosAlign { left, center, right }
 class EscPosBuilder {
   final List<int> _bytes = <int>[];
 
+  /// Initializes printer (ESC @) to reset modes. Safe to call multiple times.
+  void init() {
+    _bytes.addAll([0x1B, 0x40]);
+  }
+
   /// Adds plain text to the buffer with optional [bold] and [align]. The
   /// default alignment is [PosAlign.left].
   void text(String text, {PosAlign align = PosAlign.left, bool bold = false}) {

@@ -334,6 +334,11 @@ class CustomStickerPrinter {
     double marginBottom = 2,      // margin bawah dalam mm (NEW!)
     required List<StickerText> texts,
     StickerBarcode? barcode,
+    // If true, append a FORMFEED after PRINT so the printer advances to the
+    // next label gap. Some firmwares require an explicit feed to reset the
+    // head/reference between labels. Default=false to avoid changing behavior
+    // for users who rely on current settings.
+    bool ensureNewLabel = false,
     int direction = 0,            // 0=normal, 1=terbalik
     int density = 8,              // 1-15 (kepadatan tinta)
     int speed = 2,                // 1-6 (kecepatan print)
@@ -341,14 +346,18 @@ class CustomStickerPrinter {
     final sb = StringBuffer();
     const double dotsPerMm = 8;   // 203 DPI ≈ 8 dots/mm
     
+  // Reset printer state for consistency. Use a single CLS only —
+  // FORMFEED and duplicate CLS were causing extra feed/duplicate
+  // prints and inconsistent offsets on some firmwares, so remove them.
+  sb.writeln('CLS'); // Clear buffer
+    
     // Setup dasar sticker
     sb.writeln('SIZE $width mm, $height mm');
     sb.writeln('GAP $gap mm, 0 mm');
     sb.writeln('DIRECTION $direction');
     sb.writeln('REFERENCE ${(marginLeft * dotsPerMm).round()},${(marginTop * dotsPerMm).round()}');
     sb.writeln('SPEED $speed');
-    sb.writeln('DENSITY $density');
-    sb.writeln('CLS');
+  sb.writeln('DENSITY $density');
     
     // Hitung area yang bisa digunakan untuk layout
     final printableWidth = width - marginLeft - marginRight;
@@ -385,10 +394,24 @@ class CustomStickerPrinter {
       sb.writeln('BARCODE $xDots,$yDots,"${barcode.type}",$heightDots,1,0,1,"${barcode.data}"');
     }
     
-    sb.writeln('PRINT 1');
+  sb.writeln('PRINT 1');
+  if (ensureNewLabel) {
+    // Ask the printer to advance to the next label gap explicitly.
+    sb.writeln('FORMFEED');
+  }
     
-    // Print ke printer
-    printer.printTspl(role, sb.toString());
+  // Print ke printer
+  final payload = sb.toString();
+
+  // Debug: log TSPL payload so we can inspect exact commands per job
+  // ignore: avoid_print
+  print('TSPL PAYLOAD (printSticker):\n$payload');
+
+  printer.printTspl(role, payload);
+
+  // Small delay to allow the printer firmware to finish feeding/moving
+  // media to the next label. Increase this if your printer needs more time.
+  await Future.delayed(const Duration(milliseconds: 600));
   }
 
   /// Template siap pakai untuk sticker produk 40x30mm
@@ -904,26 +927,34 @@ class CustomStickerPrinter {
     required List<MenuItem> menuItems,
     double widthMm = 40,
     double gapMm = 3,
-    double marginMm = 1,
+    double marginLeftMm = 12, // 🔧 Margin kiri yang konsisten
+    double marginTopMm = 2,   // 🔧 Margin atas yang konsisten
   }) async {
     final now = DateTime.now();
     
-    // Print each menu item as separate sticker
-    for (final menuItem in menuItems) {
+    // Print each menu item as separate sticker dengan delay untuk konsistensi
+    for (int i = 0; i < menuItems.length; i++) {
+      final menuItem = menuItems[i];
+      
+      // Tambahkan delay kecil antar sticker untuk memastikan positioning yang benar
+      if (i > 0) {
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
+      
       List<StickerText> texts = [];
-      double currentY = 0;
+      double currentY = 0; // Start from 0, margin akan ditangani oleh marginTop
       
       // Customer name (paling atas)
-      texts.add(StickerText(customerName, x: 12, y: currentY, font: 1, size: 1, alignment: 'left'));
+      texts.add(StickerText(customerName, x: 0, y: currentY, font: 1, size: 1, alignment: 'left')); // x=0 untuk konsisten dengan margin
       currentY += 4;
       
       // Date time
       final dateStr = '${now.day} ${_getMonthName(now.month)} ${now.year} : ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-      texts.add(StickerText(dateStr, x: 12, y: currentY, font: 1, size: 1, alignment: 'left'));
+      texts.add(StickerText(dateStr, x: 0, y: currentY, font: 1, size: 1, alignment: 'left')); // x=0 untuk konsisten dengan margin
       currentY += 4;
       
       // Menu name (font besar)
-      texts.add(StickerText(menuItem.name, x: 12, y: currentY, font: 8, size: 1, alignment: 'left'));
+      texts.add(StickerText(menuItem.name, x: 0, y: currentY, font: 8, size: 1, alignment: 'left')); // x=0 untuk konsisten dengan margin
       currentY += 4;
       
       // Modifications + note (gabung dengan koma)
@@ -938,7 +969,7 @@ class CustomStickerPrinter {
         final wrappedLines = _wrapText(detailText, 30);
         
         for (String line in wrappedLines) {
-          texts.add(StickerText(line, x: 12, y: currentY, font: 2, size: 1, alignment: 'left'));
+          texts.add(StickerText(line, x: 0, y: currentY, font: 2, size: 1, alignment: 'left')); // x=0 untuk konsisten dengan margin
           currentY += 3;
         }
       }
@@ -952,10 +983,10 @@ class CustomStickerPrinter {
         width: widthMm,
         height: calculatedHeight,
         gap: gapMm,
-        marginLeft: marginMm,
-        marginTop: marginMm,
-        marginRight: marginMm,
-        marginBottom: marginMm,
+        marginLeft: marginLeftMm,  // 🔧 Gunakan margin kiri yang konsisten
+        marginTop: marginTopMm,    // 🔧 Gunakan margin atas yang konsisten
+        marginRight: 1,
+        marginBottom: 1,
         texts: texts,
       );
     }

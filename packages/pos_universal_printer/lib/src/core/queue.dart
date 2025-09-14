@@ -23,6 +23,14 @@ class JobQueue {
   final int maxRetries;
   final List<PrintJob> _queue = <PrintJob>[];
   bool _isProcessing = false;
+  Completer<void>? _drainCompleter;
+
+  /// Returns a Future that completes when all currently queued jobs finish.
+  Future<void> onDrain() {
+    if (_queue.isEmpty && !_isProcessing) return Future.value();
+    _drainCompleter ??= Completer<void>();
+    return _drainCompleter!.future;
+  }
 
   /// Adds a job to the queue and schedules processing.
   void addJob(PrintJob job) {
@@ -57,5 +65,7 @@ class JobQueue {
       }
     }
     _isProcessing = false;
+    _drainCompleter?.complete();
+    _drainCompleter = null;
   }
 }
