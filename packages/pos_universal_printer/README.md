@@ -22,7 +22,7 @@ Add the package from pub.dev:
 
 ```yaml
 dependencies:
-  pos_universal_printer: ^0.2.3
+  pos_universal_printer: ^0.2.4
 ```
 
 For Git usage in a monorepo, see the repository README for dependency_overrides instructions.
@@ -132,9 +132,9 @@ class PrinterManager {
 }
 ```
 
-## 🏷️ Sticker Printing
+## Sticker Printing
 
-### Level 1: Super Simple (ONE-LINER) 🚀
+### Level 1: Super Simple (ONE-LINER) 
 
 The easiest method to print restaurant invoice stickers. Perfect for beginners who want to get started quickly:
 
@@ -151,7 +151,7 @@ await CustomStickerPrinter.printInvoice(
 );
 ```
 
-### Level 2: Template with Options (CUSTOMIZABLE) ⚙️
+### Level 2: Template with Options (CUSTOMIZABLE) 
 
 Invoice template with customization options for intermediate users. Configure sticker size, fonts, and spacing:
 
@@ -172,7 +172,7 @@ await CustomStickerPrinter.printInvoiceSticker(
 - **StickerSize**: `mm40x30`, `mm58x40`, `mm40x25`, `mm32x20`
 - **FontSize**: `small`, `medium`, `large`
 
-### Level 3: Multi-Menu Restaurant Style (PROFESSIONAL) 👨‍🍳
+### Level 3: Multi-Menu Restaurant Style (PROFESSIONAL) 
 
 Print multiple menu items at once, each menu = 1 separate sticker. Perfect for restaurants:
 
@@ -192,7 +192,7 @@ await CustomStickerPrinter.printRestaurantOrder(
 );
 ```
 
-### Level 4: Full Custom (ADVANCED) 💪
+### Level 4: Full Custom (ADVANCED) 
 
 For developers who need full control over layout and positioning:
 
@@ -251,7 +251,94 @@ If a single label causes two labels to feed:
 - Adjust GAP value to your stock (try 2–4 mm).
 - Ensure `CLS`, `DIRECTION`, and `REFERENCE` are set before elements.
 
-More examples and troubleshooting are available in the root README of the repository.
+---
+## 🔄 Blue Thermal Printer Migration (Compat API)
+Seamlessly reuse almost all of your existing `blue_thermal_printer` logic.
+
+```dart
+import 'package:pos_universal_printer/blue_thermal_compat.dart';
+
+final bt = BlueThermalCompatPrinter();
+await bt.connectBluetooth('AA:BB:CC:DD:EE:FF');
+await bt.printCustom('HEADER', Size.large, Align.center, bold: true);
+await bt.printLeftRight('TOTAL', '125.000', Size.medium);
+await bt.printBarcode('123456789012');
+await bt.printQRcode('https://example.com');
+await bt.printImageAsset('assets/images/akib.png');
+await bt.paperCut();
+```
+
+Method mapping summary:
+- `printCustom` → bold + alignment + size
+- `printLeftRight` → padded columns with truncation & tail preservation
+- `printNewLine` → feed 1 line
+- `printImageAsset` / `printImageBytes` → ESC/POS raster with bit‑image fallback
+- `printBarcode` / `printQRcode` → 1D / 2D codes
+- `paperCut` → full cut
+
+No global singleton required; you may keep one instance per UI flow.
+
+### Image / Logo Printing (Compat)
+
+Single payload (logo + lines) for maximum Bluetooth stability:
+```dart
+await bt.printLogoAndLines(
+  assetLogoPath: 'assets/images/akib.png',
+  lines: [
+    CompatLine.text('My Shop', bold: true, align: Align.center),
+    CompatLine.text('Jl. Contoh 123'),
+    CompatLine.leftRight('Subtotal', '100.000'),
+    CompatLine.leftRight('Diskon', '-5.000'),
+    CompatLine.leftRight('TOTAL', '95.000', bold: true),
+  ],
+  preferBitImage: true, // fallback to ESC * if raster unsupported
+);
+```
+
+Tips:
+- If logo prints as a black block → lower threshold or set `preferBitImage: true`.
+- If only partial logo prints → reduce asset width (<380px for 58mm usually) or scale down.
+
+### Asset Setup
+```yaml
+flutter:
+  assets:
+    - assets/images/akib.png
+```
+Make sure the asset path matches exactly (case sensitive on some systems).
+
+---
+## 🛠 Troubleshooting
+
+| Problem | Cause | Fix |
+|---------|-------|-----|
+| Second label starts mid‑way | Printer not fully resetting buffer timing | Add small delay (already built‑in), keep `ensureNewLabel=false` unless required |
+| Two labels feed for one print | GAP mismatch or extra FORMFEED | Use correct `GAP`, avoid manual FORMFEED, ensure only one `CLS` |
+| Left margin shrinks each sticker | State not reset | We send single `CLS`; avoid custom sequences that add REFERENCE cumulatively |
+| Logo = black rectangle | Threshold too aggressive / printer rejects raster | Use `preferBitImage: true` or supply a lighter logo, adjust threshold |
+| Bluetooth scan freezes UI | Long synchronous loop | Use provided async scan (stream aggregated) |
+| Barcode unreadable | Height or density too low | Increase barcode height / density |
+| QR empty | Data too long for size | Shorten data or increase module size (not yet exposed) |
+
+---
+## 🔍 Logging & Debug
+Use in‑memory logger exposed by `PosUniversalPrinter.instance.logs`.
+
+```dart
+final pos = PosUniversalPrinter.instance;
+pos.debugLog(LogLevel.debug, 'Manual note before print');
+for (final entry in pos.logs) {
+  debugPrint('[${entry.level}] ${entry.message}');
+}
+```
+
+The example app includes a live log viewer to inspect raw TSPL / ESC/POS sequences.
+
+---
+## Versioning Policy
+- Patch (0.2.x) = additive / docs / fixes
+- Minor bump to 0.3.0 reserved for breaking API changes
+- 1.0.0 once core protocols + compat considered stable in production
 
 ## License
 
