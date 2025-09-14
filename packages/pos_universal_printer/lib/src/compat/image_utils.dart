@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
-import 'package:flutter/services.dart' show rootBundle; 
+import 'package:flutter/services.dart' show rootBundle;
 
 /// Utility helpers for loading and encoding images into ESC/POS friendly
 /// byte formats (raster and legacy bit-image). These are intentionally
@@ -15,7 +15,8 @@ class CompatImageUtils {
     int threshold = 160,
   }) async {
     final data = await rootBundle.load(assetPath);
-    return _rawImageToRaster(data.buffer.asUint8List(), maxWidth: maxWidth, threshold: threshold);
+    return _rawImageToRaster(data.buffer.asUint8List(),
+        maxWidth: maxWidth, threshold: threshold);
   }
 
   /// Attempts to decode raw bytes (PNG/JPEG) already in memory and return
@@ -39,7 +40,8 @@ class CompatImageUtils {
   static bool looksLikeImage(Uint8List b) {
     if (b.length < 4) return false;
     // PNG
-    if (b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47) return true;
+    if (b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47)
+      return true;
     // JPEG
     if (b[0] == 0xFF && b[1] == 0xD8) return true;
     return false;
@@ -54,7 +56,8 @@ class CompatImageUtils {
     final codec = await ui.instantiateImageCodec(raw);
     final frame = await codec.getNextFrame();
     final img = frame.image;
-    final targetWidth = (maxWidth != null && img.width > maxWidth) ? maxWidth : img.width;
+    final targetWidth =
+        (maxWidth != null && img.width > maxWidth) ? maxWidth : img.width;
     final scale = targetWidth / img.width;
     final targetHeight = (img.height * scale).round();
     final recorder = ui.PictureRecorder();
@@ -64,7 +67,8 @@ class CompatImageUtils {
     canvas.drawImage(img, const ui.Offset(0, 0), paint);
     final picture = recorder.endRecording();
     final resized = await picture.toImage(targetWidth, targetHeight);
-    final byteData = await resized.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final byteData =
+        await resized.toByteData(format: ui.ImageByteFormat.rawRgba);
     if (byteData == null) return Uint8List(0);
     final pixels = byteData.buffer.asUint8List();
     final bytes = <int>[];
@@ -88,7 +92,7 @@ class CompatImageUtils {
             if (lum < threshold) color = 0x000000;
           }
           b <<= 1;
-            if (color == 0x000000) b |= 0x01;
+          if (color == 0x000000) b |= 0x01;
         }
         bytes.add(b);
       }
@@ -105,7 +109,8 @@ class CompatImageUtils {
     int threshold = 160,
   }) async {
     final data = await rootBundle.load(assetPath);
-    return _rawImageToBitImage(data.buffer.asUint8List(), maxWidth: maxWidth, threshold: threshold);
+    return _rawImageToBitImage(data.buffer.asUint8List(),
+        maxWidth: maxWidth, threshold: threshold);
   }
 
   static Future<Uint8List> _rawImageToBitImage(
@@ -116,7 +121,8 @@ class CompatImageUtils {
     final codec = await ui.instantiateImageCodec(raw);
     final frame = await codec.getNextFrame();
     final img = frame.image;
-    final targetWidth = (maxWidth != null && img.width > maxWidth) ? maxWidth : img.width;
+    final targetWidth =
+        (maxWidth != null && img.width > maxWidth) ? maxWidth : img.width;
     final scale = targetWidth / img.width;
     final targetHeight = (img.height * scale).round();
     final recorder = ui.PictureRecorder();
@@ -126,7 +132,8 @@ class CompatImageUtils {
     canvas.drawImage(img, const ui.Offset(0, 0), paint);
     final picture = recorder.endRecording();
     final resized = await picture.toImage(targetWidth, targetHeight);
-    final byteData = await resized.toByteData(format: ui.ImageByteFormat.rawRgba);
+    final byteData =
+        await resized.toByteData(format: ui.ImageByteFormat.rawRgba);
     if (byteData == null) return Uint8List(0);
     final pixels = byteData.buffer.asUint8List();
     final out = <int>[];
@@ -138,7 +145,8 @@ class CompatImageUtils {
       // Mode 33 = 24-dot double density often supported; fallback to 32 if needed.
       out.addAll([0x1B, 0x2A, 33, nL, nH]);
       for (int x = 0; x < targetWidth; x++) {
-        for (int k = 0; k < 3; k++) { // 24 dots => 3 bytes vertical
+        for (int k = 0; k < 3; k++) {
+          // 24 dots => 3 bytes vertical
           int byte = 0;
           for (int bit = 0; bit < 8; bit++) {
             final y = bandTop + k * 8 + bit;

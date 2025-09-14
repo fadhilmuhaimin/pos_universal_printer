@@ -54,7 +54,6 @@ class Align {
   static const right = Align._(2);
 }
 
-
 /// Main compatibility facade. Collects commands into an ESC/POS builder
 /// and flushes them when requested (or on cut). Not a full re-implementation
 /// but enough for common migration scenarios.
@@ -66,7 +65,7 @@ class BlueThermalCompatPrinter {
 
   // Role defaults to cashier for receipt style printing.
   PosPrinterRole defaultRole = PosPrinterRole.cashier;
-  
+
   /// Approximate line character capacity (32 for 58mm, 48 for 80mm).
   int _lineChars = 32;
 
@@ -143,32 +142,41 @@ class BlueThermalCompatPrinter {
     bool preferBitImage = false,
     int threshold = 160,
   }) async {
-    _printer.debugLog(LogLevel.debug, 'Compat: printImageBytes len=${bytes.length} preferBitImage=$preferBitImage');
+    _printer.debugLog(LogLevel.debug,
+        'Compat: printImageBytes len=${bytes.length} preferBitImage=$preferBitImage');
     Uint8List? raster;
     if (CompatImageUtils.looksLikeRaster(bytes)) {
-      _printer.debugLog(LogLevel.debug, 'Compat: detected existing raster header');
+      _printer.debugLog(
+          LogLevel.debug, 'Compat: detected existing raster header');
       raster = bytes; // already raster
     } else if (CompatImageUtils.looksLikeImage(bytes)) {
-      _printer.debugLog(LogLevel.debug, 'Compat: raw image detected, converting to raster');
-      raster = await CompatImageUtils.rawBytesToRaster(bytes, maxWidth: _lineChars == 48 ? 512 : 384, threshold: threshold);
-      _printer.debugLog(LogLevel.debug, 'Compat: raster after convert len=${raster.length}');
+      _printer.debugLog(
+          LogLevel.debug, 'Compat: raw image detected, converting to raster');
+      raster = await CompatImageUtils.rawBytesToRaster(bytes,
+          maxWidth: _lineChars == 48 ? 512 : 384, threshold: threshold);
+      _printer.debugLog(
+          LogLevel.debug, 'Compat: raster after convert len=${raster.length}');
       if (raster.isEmpty) raster = null;
     } else {
-      _printer.debugLog(LogLevel.debug, 'Compat: unknown format, forwarding raw bytes');
+      _printer.debugLog(
+          LogLevel.debug, 'Compat: unknown format, forwarding raw bytes');
       raster = bytes; // assume printable
     }
     if (preferBitImage) {
-      _printer.debugLog(LogLevel.debug, 'Compat: preferBitImage path; attempting legacy bit-image encode');
+      _printer.debugLog(LogLevel.debug,
+          'Compat: preferBitImage path; attempting legacy bit-image encode');
       // We need original decoded image; if we only have raster we cannot revert
       if (CompatImageUtils.looksLikeImage(bytes)) {
-        final bit = await CompatImageUtils.rawBytesToBitImage(bytes, maxWidth: _lineChars == 48 ? 512 : 384, threshold: threshold);
+        final bit = await CompatImageUtils.rawBytesToBitImage(bytes,
+            maxWidth: _lineChars == 48 ? 512 : 384, threshold: threshold);
         if (bit.isNotEmpty) {
           final b = EscPosBuilder();
           b.init();
           if (center) b.setAlign(PosAlign.center);
           b.raster(bit);
           b.feed(1);
-          _printer.debugLog(LogLevel.debug, 'Compat: dispatched bit-image len=${bit.length}');
+          _printer.debugLog(
+              LogLevel.debug, 'Compat: dispatched bit-image len=${bit.length}');
           _printer.printEscPos(defaultRole, b);
           return;
         }
@@ -176,7 +184,8 @@ class BlueThermalCompatPrinter {
     }
     // Fallback to raster (or original if not convertible)
     if (raster == null) {
-      _printer.debugLog(LogLevel.warning, 'Compat: no raster/bit-image produced, aborting');
+      _printer.debugLog(
+          LogLevel.warning, 'Compat: no raster/bit-image produced, aborting');
       return;
     }
     final builder = EscPosBuilder();
@@ -184,7 +193,8 @@ class BlueThermalCompatPrinter {
     if (center) builder.setAlign(PosAlign.center);
     builder.raster(raster);
     builder.feed(2);
-    _printer.debugLog(LogLevel.debug, 'Compat: dispatch raster len=${raster.length}');
+    _printer.debugLog(
+        LogLevel.debug, 'Compat: dispatch raster len=${raster.length}');
     _printer.printEscPos(defaultRole, builder);
   }
 
@@ -198,7 +208,8 @@ class BlueThermalCompatPrinter {
     int? maxWidth,
     bool preferBitImage = false,
   }) async {
-    _printer.debugLog(LogLevel.debug, 'Compat: printImageAsset path=$assetPath preferBitImage=$preferBitImage');
+    _printer.debugLog(LogLevel.debug,
+        'Compat: printImageAsset path=$assetPath preferBitImage=$preferBitImage');
     final width = maxWidth ?? (_lineChars == 48 ? 512 : 384);
     Uint8List? raster;
     if (!preferBitImage) {
@@ -207,7 +218,8 @@ class BlueThermalCompatPrinter {
         maxWidth: width,
         threshold: threshold,
       );
-      _printer.debugLog(LogLevel.debug, 'Compat: asset raster len=${raster.length}');
+      _printer.debugLog(
+          LogLevel.debug, 'Compat: asset raster len=${raster.length}');
       if (raster.isEmpty) raster = null;
     }
     if (preferBitImage || raster == null) {
@@ -228,16 +240,18 @@ class BlueThermalCompatPrinter {
         return;
       }
       if (raster == null) {
-        _printer.debugLog(LogLevel.warning, 'Compat: no raster/bit produced; abort');
+        _printer.debugLog(
+            LogLevel.warning, 'Compat: no raster/bit produced; abort');
         return;
       }
     }
     final builder = EscPosBuilder();
     builder.init();
     if (center) builder.setAlign(PosAlign.center);
-  builder.raster(raster);
+    builder.raster(raster);
     builder.feed(2);
-    _printer.debugLog(LogLevel.debug, 'Compat: dispatch asset image len=${raster.length}');
+    _printer.debugLog(
+        LogLevel.debug, 'Compat: dispatch asset image len=${raster.length}');
     _printer.printEscPos(defaultRole, builder);
   }
 
@@ -290,10 +304,12 @@ class BlueThermalCompatPrinter {
             maxWidth: width,
             threshold: logoThreshold,
           );
-          _printer.debugLog(LogLevel.debug, 'Compat: combined raster len=${raster.length}');
+          _printer.debugLog(
+              LogLevel.debug, 'Compat: combined raster len=${raster.length}');
         }
         if (preferBitImage || raster.isEmpty) {
-          _printer.debugLog(LogLevel.debug, 'Compat: combined using bit-image path');
+          _printer.debugLog(
+              LogLevel.debug, 'Compat: combined using bit-image path');
           final bit = await CompatImageUtils.loadAssetAsBitImage(
             assetLogoPath,
             maxWidth: width,
@@ -321,8 +337,7 @@ class BlueThermalCompatPrinter {
     _printer.printEscPos(defaultRole, b);
   }
 
-
-/// Internal record style representation of a line.
+  /// Internal record style representation of a line.
 // (moved definition to top)
   PosAlign _mapAlign(int a) {
     switch (a) {
@@ -334,5 +349,4 @@ class BlueThermalCompatPrinter {
         return PosAlign.left;
     }
   }
-
 }

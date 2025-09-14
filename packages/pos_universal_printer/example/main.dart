@@ -69,7 +69,6 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  @override
   void _testTspl(PosPrinterRole role) {
     // Satu label 40x30 mm (PRINT 1), orientasi sama seperti "Label 58x40",
     // margin kiri/atas seperti sample (mulai dari kiri-atas), isi penuh baris 'A'.
@@ -116,47 +115,6 @@ class _MyHomePageState extends State<MyHomePage> {
     sb.writeln('PRINT 1'); // pastikan hanya 1 lembar
 
     printer.printTspl(role, sb.toString());
-  }
-    const int charW = 24 * xMul;
-    const int charH = 24 * yMul;
-
-    // 5) Compute inner drawing area after margins
-    final int innerWidth = widthDots - leftMargin - rightMargin;
-    final int innerHeight = heightDots - topMargin - bottomMargin;
-
-    // 6) Build TSPL
-    final tspl = TsplBuilder();
-    tspl.size(widthMm, heightMm);
-  tspl.gap(2, 0);      // GAP label; kalibrasi printer + sesuaikan 2–4 mm
-    tspl.direction(1);   // Orientation like sampleLabel58x40
-  tspl.reference(leftMargin, topMargin); // Margin kiri/atas ala sample
-  tspl.speed(2);       // Kecepatan rendah -> kualitas lebih stabil
-  tspl.density(12);    // 1–15; lebih tinggi -> lebih gelap
-  tspl.cls();          // Wajib: bersihkan buffer sebelum gambar
-
-    // 7) Right-to-left full-width lines:
-    //    - Calculate how many characters fit exactly across the inner width.
-    //    - Right align: x = innerWidth - (columns*charW), so the last char reaches the right edge.
-    final int columns = (innerWidth ~/ charW).clamp(1, 999);
-    final String line = 'A' * columns; // use ASCII for compatibility
-    final int lineW = columns * charW;
-    final int xRightAligned = (innerWidth - lineW).clamp(0, innerWidth);
-
-    // 8) Number of rows that fit top-to-bottom
-    final int rows = (innerHeight ~/ charH).clamp(1, 999);
-
-    // 9) Draw each line. y increases by charH per line.
-    for (int r = 0; r < rows; r++) {
-      final int y = r * charH;
-      tspl.text(xRightAligned, y, font, 0, xMul, yMul, line);
-      // Tip: to add a visible row index for inspection (may reduce columns),
-      // you can print another small TEXT at (0,y) with the index.
-      // Example:
-      // tspl.text(0, y, 1, 0, 1, 1, '#${r+1}');
-    }
-
-    tspl.printLabel(1);
-    printer.printTspl(role, String.fromCharCodes(tspl.build()));
   }
 
   void _testCpcl(PosPrinterRole role) {

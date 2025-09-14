@@ -17,10 +17,11 @@ export 'src/protocols/escpos/builder.dart'
 export 'src/protocols/tspl/builder.dart' show TsplBuilder;
 export 'src/protocols/cpcl/builder.dart' show CpclBuilder;
 export 'src/renderer/receipt_renderer.dart' show ReceiptItem, ReceiptRenderer;
-export 'src/helpers/custom_sticker.dart' 
+export 'src/helpers/custom_sticker.dart'
     show StickerText, StickerBarcode, CustomStickerPrinter, MenuItemModel;
 // Blue thermal compatibility facade
-export 'blue_thermal_compat.dart' show BlueThermalCompatPrinter, Size, Align, CompatLine;
+export 'blue_thermal_compat.dart'
+    show BlueThermalCompatPrinter, Size, Align, CompatLine;
 
 /// Roles in a point‑of‑sale system. Each role can be mapped to a specific
 /// printer device so that receipts are routed correctly (e.g. cashier
