@@ -1,14 +1,46 @@
 # pos_universal_printer
 
-A Flutter plugin for printing POS receipts and labels on various thermal printers. Supports ESC/POS (receipts), TSPL and CPCL (labels). Designed for multi‑role routing (cashi### 4) Print TSPL label (direct commands)r, kitchen, sticker) with job queue, retries, Bluetooth Classic (Android), and TCP/IP (Android & iOS).
+Modern unified printing (Receipts + Stickers/Labels) for Flutter.
 
-## Key features
+Supports ESC/POS (receipts), TSPL & CPCL (labels), multi‑role routing (cashier, kitchen, sticker), Bluetooth Classic (Android) & TCP/IP (Android + iOS), plus a powerful **Custom Sticker API** with 4 levels of complexity.
+
+✅ NEW v0.2.4:
+- Logo / image printing added to compat layer via `printLogoAndLines(assetLogoPath: ...)`
+- Bit‑image fallback (`preferBitImage: true`) for older printers that reject GS v 0 raster
+- Improved left‑right alignment padding (legacy style with smart truncation)
+- Threshold tuning guide for clearer logos (avoid all‑black or overly faint output)
+- Single‑payload combined job (logo + lines) reduces Bluetooth fragmentation
+
+Previous (v0.2.3): Blue Thermal Printer (kakzaki.dev) compatibility facade (`BlueThermalCompatPrinter`) → migrate with almost no refactor (keep your old calls: `printCustom`, `printLeftRight`, `printNewLine`, `paperCut`) while adding modern multi‑role + Wi‑Fi/TCP + sticker APIs.
+
+---
+
+## Quick Overview
+
+| Use Case | Old blue_thermal_printer | This Package |
+|----------|-------------------------|--------------|
+| Basic receipt text | `printCustom` | `BlueThermalCompatPrinter.printCustom` or `EscPosBuilder` |
+| Left/Right values | `printLeftRight` | Same name (compat) or manual string alignment |
+| New line | `printNewLine` | Same name |
+| Cut paper | `paperCut` | Same name (compat) or `builder.cut()` |
+| Open cash drawer | (custom command) | `pos.openDrawer(role)` |
+| Bluetooth Android | Yes | Yes |
+| Wi‑Fi/TCP iOS/Android | Manual socket | Built‑in role based routing |
+| Stickers / per menu label | Not native | TSPL powered sticker API |
+| Multi‑menu restaurant stickers | Manual loops | `printRestaurantOrder()` |
+| Invoice style 1 menu = 1 sticker | Hard | Built‑in universal helpers |
+| Migration effort | — | LOW (compat facade) |
+
+---
+
+## Key Features
 
 - ESC/POS: text, alignment, bold, barcode, QR, feed/cut, cash drawer (ESC p).
 - TSPL & CPCL: simple builders for labels (TEXT/BARCODE/QRCODE/BITMAP/PRINT).
 - Multi‑role: map different printers per role (cashier, kitchen, sticker).
 - Connectivity: Bluetooth Classic (Android) and TCP 9100 (Android & iOS).
 - Reliability: job queue with retry and TCP auto‑reconnect; BT write with reconnect fallback.
+ - Logo / Image printing: GS v 0 raster + legacy ESC * bit‑image fallback for high compatibility.
 
 ## Platform & device support
 
@@ -65,7 +97,7 @@ dependencies:
   pos_universal_printer: ^X.Y.Z
 ```
 
-## Platform setup
+## Platform Setup
 
 ### Android
 
@@ -99,7 +131,65 @@ platform :ios, '12.0'
 
 Usually no ATS exceptions are required for raw TCP to LAN IPs.
 
-## How to use (quick examples)
+## How To Use
+
+### 0) (Optional) Blue Thermal Printer Style – Minimal Migration
+
+```dart
+import 'package:pos_universal_printer/pos_universal_printer.dart';
+
+final compat = BlueThermalCompatPrinter.instance;
+compat.defaultRole = PosPrinterRole.cashier; // choose role
+compat.setPaper80mm(true); // or false for 58mm
+
+// Register a device first (Bluetooth or TCP)
+await PosUniversalPrinter.instance.registerDevice(
+  PosPrinterRole.cashier,
+  PrinterDevice(
+    id: '192.168.1.50:9100',
+    name: 'LAN Printer',
+    type: PrinterType.tcp,
+    address: '192.168.1.50',
+    port: 9100,
+  ),
+);
+
+compat.printCustom('TOKO MAJU JAYA', Size.boldLarge.val, Align.center.val);
+compat.printCustom('Jl. Contoh No.1', Size.medium.val, Align.center.val);
+compat.printLeftRight('Kasir:', 'Andi', Size.bold.val);
+compat.printLeftRight('Total', '58.300', Size.boldLarge.val);
+compat.printCustom('Terima Kasih :)', Size.bold.val, Align.center.val);
+compat.paperCut();
+```
+
+#### Printing a Logo (Compat One‑Shot)
+
+```dart
+await compat.printLogoAndLines(
+  assetLogoPath: 'assets/images/akib.png', // ensure declared in pubspec
+  logoThreshold: 170,        // tune 120–210 (higher = darker)
+  preferBitImage: true,      // legacy ESC * path first (better for older models)
+  lines: [
+    CompatLine('TOKO DEMO', Size.boldLarge.val, Align.center.val),
+    CompatLine('Jl. Contoh No.1', Size.medium.val, Align.center.val),
+    CompatLine('', Size.normal.val, Align.left.val),
+    CompatLine('Kasir: Andi', Size.bold.val, Align.left.val),
+    CompatLine('Total: Rp 58.300', Size.boldLarge.val, Align.left.val),
+    CompatLine('Terima Kasih :)', Size.bold.val, Align.center.val),
+  ],
+);
+compat.paperCut();
+```
+
+If the logo appears as a black bar:
+1. Raise `logoThreshold` (e.g. 185–200)
+2. Keep `preferBitImage: true`
+3. Ensure width ≤384 px (58mm) or ≤512 px (80mm)
+4. Use a higher contrast source PNG
+
+You can gradually migrate to the richer APIs (builders, renderer, stickers) later.
+
+---
 
 ### 1) Register per‑role printers (Android Bluetooth or TCP)
 
@@ -126,7 +216,7 @@ final selected = btDevices.first; // choose via your UI
 await pos.registerDevice(PosPrinterRole.kitchen, selected);
 ```
 
-### 2) Print custom sticker labels (NEW!)
+### 2) Print Custom Sticker Labels (TSPL)
 
 ```dart
 // Template siap pakai - paling mudah!
@@ -157,7 +247,7 @@ CustomStickerPrinter.printSticker(
 
 **🔧 Troubleshooting text terbalik:** [PRINT_ORIENTATION_FIX.md](PRINT_ORIENTATION_FIX.md)
 
-### 3) Print ESC/POS receipt (Builder)
+### 3) Print ESC/POS Receipt (Builder)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/escpos/builder.dart';
@@ -189,7 +279,7 @@ final items = [
 pos.printReceipt(PosPrinterRole.cashier, items, is80mm: false);
 ```
 
-### 3) Open the cash drawer
+### 4) Open the Cash Drawer
 
 ```dart
 pos.openDrawer(PosPrinterRole.cashier); // ESC p with default pulse
@@ -197,7 +287,7 @@ pos.openDrawer(PosPrinterRole.cashier); // ESC p with default pulse
 
 You can tune pulse values: `openDrawer(role, m: 0, t1: 25, t2: 250)`.
 
-### 4) Print TSPL label (TSC/Argox)
+### 5) Print TSPL Label (TSC/Argox)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/tspl/builder.dart';
@@ -246,7 +336,7 @@ pos.printTspl(PosPrinterRole.sticker, TsplBuilder.sampleLabel40x30());
 // 3) Ensure each job starts with CLS and sets DIRECTION/REFERENCE.
 ```
 
-### 5) Print CPCL label (Zebra)
+### 6) Print CPCL Label (Zebra)
 
 ```dart
 import 'package:pos_universal_printer/src/protocols/cpcl/builder.dart';
@@ -264,13 +354,101 @@ pos.printCpcl(PosPrinterRole.sticker, String.fromCharCodes(cpcl.build()));
 pos.printCpcl(PosPrinterRole.sticker, CpclBuilder.sampleLabel());
 ```
 
-### 6) Send raw bytes
+### 7) Send Raw Bytes
 
 ```dart
 pos.printRaw(PosPrinterRole.kitchen, [0x1B, 0x40, 0x0A]); // ESC @, LF
 ```
 
-### 7) Disconnect / cleanup
+### 8) Disconnect / Cleanup
+
+---
+
+## Sticker / Invoice Multi‑Level API (Summary)
+
+| Level | Method | Use Case |
+|-------|--------|----------|
+| 1 | `printInvoice()` | One‑liner quick invoice sticker |
+| 2 | `printInvoiceSticker()` | Template with size + font options |
+| 3 | `printRestaurantOrder()` | Multi menu (each menu = 1 sticker) |
+| 4 | `printSticker()` | Full manual control TSPL (X/Y/fonts/margins) |
+
+Invoice style and POS JSON data both internally call the same universal printing logic (consistent margins, wrapping, per‑sticker reset).
+
+---
+
+## Migration Guide from blue_thermal_printer
+
+1. Remove `blue_thermal_printer` dependency.
+2. Add `pos_universal_printer` dependency.
+3. Replace import:
+  ```dart
+  // OLD
+  import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+  // NEW
+  import 'package:pos_universal_printer/pos_universal_printer.dart';
+  ```
+4. Replace instance:
+  ```dart
+  // OLD
+  final bluetooth = BlueThermalPrinter.instance;
+  // NEW
+  final compat = BlueThermalCompatPrinter.instance;
+  compat.defaultRole = PosPrinterRole.cashier;
+  ```
+5. Connection:
+  - OLD: `bluetooth.connect(device)`
+  - NEW: `await PosUniversalPrinter.instance.registerDevice(role, PrinterDevice(...))`
+6. Printing method mapping:
+
+| Old Method | New (Compat) | Notes |
+|------------|--------------|-------|
+| `printCustom(text, size, align)` | Same name | Size mapped to bold if >= bold enum |
+| `printLeftRight(a,b,size)` | Same name | Composes single padded line |
+| `printNewLine()` | Same name | feed 1 line |
+| `printImageBytes(bytes)` | Same name | Provide ESC/POS raster bytes |
+| `printLogoAndLines(assetLogoPath:, lines:)` | NEW helper | Logo + text in one payload |
+| `printQRcode(data)` | Same name | Model 2 QR |
+| `printBarcode(data)` | Same name | Code128 |
+| `paperCut()` | Same name | Full cut |
+| (open drawer) | `pos.openDrawer(role)` | Use core API |
+
+7. Add advanced features progressively:
+  - Switch to `EscPosBuilder` for fine control
+  - Adopt sticker APIs for kitchen prep or per‑item labels
+  - Use roles: cashier vs kitchen vs sticker printers
+
+### Character Width Approximation
+Call `compat.setPaper80mm(true/false)` to switch 48 vs 32 column padding for `printLeftRight` composition.
+
+### Moving to Stickers
+Keep receipt code unchanged; add invoice style sticker buttons using:
+
+```dart
+CustomStickerPrinter.printInvoice(
+  printer: PosUniversalPrinter.instance,
+  role: PosPrinterRole.sticker,
+  customer: 'John Doe',
+  menu: 'Nasi Goreng Spesial',
+  details: 'Extra Pedas, Tanpa Bawang',
+);
+```
+
+For multi menu:
+
+```dart
+CustomStickerPrinter.printRestaurantOrder(
+  printer: PosUniversalPrinter.instance,
+  role: PosPrinterRole.sticker,
+  customerName: 'Budi',
+  menuItems: [
+   MenuItem('Kopi Gula Aren', ['Less Sugar'], 'Saus Terpisah'),
+   MenuItem('Es Teh Manis', ['Gelas Besar'], 'Banyak es'),
+  ],
+);
+```
+
+---
 
 ```dart
 await pos.unregisterDevice(PosPrinterRole.kitchen);
@@ -355,13 +533,26 @@ pos.printTspl(PosPrinterRole.sticker, sb.toString());
 - Nothing printed via TCP: verify IP/port (usually 9100) and printer mode (ESC/POS vs TSPL/CPCL).
 - Paper cut not working: not all printers support full cut; use tear bar or device‑specific command.
 
-### TSPL layout tips (40×30 mm)
+### TSPL Layout Tips (40×30 mm)
 
 - 203 dpi ≈ 8 dots/mm, so 40×30 mm ≈ 320×240 dots.
 - Set REFERENCE(x,y) to create top/left margins in dots.
 - For right alignment, estimate text width: chars × 24 × xMultiplier (font 3 ~24 dots/char).
 - Bottom placement: y ≈ innerHeight − charHeight.
 - Always `CLS` before drawing.
+
+### Logo Printing Issues (ESC/POS)
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Solid black rectangle | Threshold too low OR printer only supports bit‑image | Raise threshold (180–200) AND set `preferBitImage: true` |
+| Very faint logo | Threshold too high | Lower threshold (130–150) |
+| Nothing printed (text ok) | Printer rejects GS v 0 raster | Use `preferBitImage: true` |
+| Cropped logo | Image wider than head width | Resize or pass `logoMaxWidth` (58mm: 384, 80mm: 512) |
+
+Threshold heuristic: start 160 → if too dark raise by +10; if too light lower by −10. Most logos stabilize at 150–185.
+
+Single‑payload benefit: `printLogoAndLines` reduces Bluetooth chunks so logos start faster and avoid partial rendering on slow modules.
 
 ## License
 

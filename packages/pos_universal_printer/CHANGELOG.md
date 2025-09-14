@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.2.4
+
+### 🖼 Logo & Image Printing (Compat Layer)
+- Added `printLogoAndLines(assetLogoPath:, lines:, preferBitImage:)` for single‑payload (logo + text) printing.
+- Legacy ESC * bit‑image fallback (`preferBitImage: true`) for printers that reject GS v 0 raster.
+- Threshold tuning (logoThreshold) documented for balancing contrast vs fill.
+
+### ✨ Improvements
+- Restored legacy style left‑right padded alignment with truncation & tail preservation.
+- Reduced Bluetooth fragmentation by batching logo + lines before send.
+- Added detailed debug logging around image pipeline and bit‑image fallback path.
+
+### 📖 Documentation
+- README updated (v0.2.4 section, logo printing guide, troubleshooting table).
+
+### 🔧 Internal
+- Added rawBytesToBitImage helper to image utils for direct conversion.
+- Prefer single builder flush to minimize partial writes on slower modules.
+
+## 0.2.3
+
+### 🔄 Blue Thermal Printer Compatibility
+- Added `BlueThermalCompatPrinter` facade (methods: `printCustom`, `printLeftRight`, `printNewLine`, `printImageBytes`, `printBarcode`, `printQRcode`, `paperCut`)
+- Simple migration path from `blue_thermal_printer` with almost no code changes
+- Added alignment + size enums (`Align`, `Size`) mirroring legacy API values
+
+### 📦 Features
+- Receipt compat + existing multi‑role architecture (cashier/kitchen/sticker)
+- Works alongside sticker invoice system (Levels 1–4)
+
+### 📖 Documentation
+- README restructured: quick overview, migration guide, method mapping table
+- Added examples for compat receipt + sticker APIs
+
+### 🛠 Internal
+- No breaking changes to existing public APIs
+- Version bump for pub.dev release
+
 ## 0.2.2
 
 ### 🚀 NEW: 3-Level API for Better User Experience
