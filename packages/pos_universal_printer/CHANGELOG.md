@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.5
+
+### 📖 Documentation
+- Bump install snippet to `^0.2.5` (previous README still showed 0.2.4)
+- No code changes; publish to sync README/version on pub.dev
+
+## 0.2.4
+
+### 📖 Documentation & Compat Enhancements
+- Added Blue Thermal Printer migration section (compat facade usage & mapping).
+- Added logo / image printing guide with `printLogoAndLines` and `preferBitImage` fallback notes.
+- Added troubleshooting matrix (label feed, margins, black logo, scan freeze).
+- Added logging & versioning policy sections.
+- No runtime code changes; docs-only release.
+
 ## 0.2.3
 
 ### 🖼 Logo & Image Printing (Compat Layer)
