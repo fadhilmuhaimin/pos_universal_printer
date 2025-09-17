@@ -1,31 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide Align; // hide Flutter Align to use compat Align enum
 import 'package:pos_universal_printer/pos_universal_printer.dart';
 import 'package:pos_universal_printer/src/helpers/custom_sticker.dart';
+import 'demo_transaction_data.dart';
+import 'finished_transaction_compat.dart';
+import 'dart:io';
+import 'dart:async';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:ui' as ui;
 
-// 🧾 Model untuk Invoice Menu
-class OrderItem {
-  final String name;
-  final List<String> modifications;
-  final String? note;
 
-  OrderItem({
-    required this.name,
-    this.modifications = const [],
-    this.note,
-  });
-}
-
-class Order {
-  final DateTime dateTime;
-  final List<OrderItem> items;
-  final String customerName; // 🆕 Nama customer
-
-  Order({
-    required this.dateTime,
-    required this.items,
-    required this.customerName, // 🆕 Required customer name
-  });
-}
 
 void main() {
   runApp(const MyApp());
@@ -69,6 +53,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Map<PosPrinterRole, bool> _isDisconnecting = {};
   Map<PosPrinterRole, bool> _isConnected = {};
   bool _isScanning = false;
+  bool _showLogs = false;
+  // (Removed stream subscription approach; using one-shot scan now)
 
   @override
   void initState() {
@@ -184,312 +170,57 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // 🆕 Method untuk scan Bluetooth dengan loading
   Future<void> _scanBluetoothDevices() async {
+    if (_isScanning) return; // guard
     setState(() {
       _isScanning = true;
       _bluetoothDevices.clear();
     });
 
     try {
-      await for (PrinterDevice device in printer.scanBluetooth()) {
-        if (mounted) {
-          setState(() {
-            _bluetoothDevices.add(device);
-          });
+      if (Platform.isAndroid) {
+        final statuses = await [
+          Permission.bluetoothScan,
+          Permission.bluetoothConnect,
+        ].request();
+        final scanOk = statuses[Permission.bluetoothScan] == PermissionStatus.granted;
+        final connectOk = statuses[Permission.bluetoothConnect] == PermissionStatus.granted;
+        if (!scanOk || !connectOk) {
+          if (!mounted) return;
+          setState(() => _isScanning = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Permissions required: enable Bluetooth Scan & Connect'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
         }
       }
+
+      // Collect devices from single scan call (plugin returns bonded list once)
+      final devices = await printer.scanBluetooth().toList();
+      final dedup = <String, PrinterDevice>{};
+      for (final d in devices) {
+        dedup[d.id] = d;
+      }
+      if (!mounted) return;
+      setState(() {
+        _bluetoothDevices = dedup.values.toList();
+        _isScanning = false;
+      });
     } catch (e) {
+      if (!mounted) return;
+      setState(() => _isScanning = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('❌ Scan failed: $e'),
           backgroundColor: Colors.red,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isScanning = false;
-        });
-      }
     }
   }
 
-  // Helper untuk nama bulan
-  String _getMonthName(int month) {
-    const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return months[month];
-  }
 
-  // 🏷️ TEMPLATE BUILT-IN - Siap pakai!
-  void _testProductTemplate(PosPrinterRole role) {
-    CustomStickerPrinter.printProductSticker40x30(
-      printer: printer,
-      role: role,
-      productName: 'KOPI ARABICA',
-      productCode: 'KA001', 
-      price: 'Rp 35.000',
-      barcodeData: '1234567890',
-    );
-  }
-
-  void _testAddressTemplate(PosPrinterRole role) {
-    CustomStickerPrinter.printAddressSticker58x40(
-      printer: printer,
-      role: role,
-      receiverName: 'John Doe',
-      address: 'Jl. Merdeka No. 123, Jakarta Pusat',
-      phone: '081234567890',
-      orderCode: 'ORD-2024-001',
-    );
-  }
-
-  // 🎯 TEMPLATE MUDAH UNTUK CUSTOM - COPY & MODIFY INI
-  void _myCustomSticker(PosPrinterRole role) {
-    CustomStickerPrinter.printSticker(
-      printer: printer,
-      role: role,
-      width: 40,          // mm - sesuaikan dengan media Anda
-      height: 30,         // mm - sesuaikan dengan media Anda
-      gap: 3,             // mm - gap antar label
-      marginLeft: 8,      // mm - margin kiri
-      marginTop: 2,       // mm - margin atas
-      texts: [
-        StickerText('CUSTOM STICKER', x: 0, y: 0, font: 3, size: 1),
-        StickerText('Teks Anda', x: 0, y: 8, font: 2, size: 1),
-        StickerText('Barcode dibawah', x: 0, y: 16, font: 1, size: 1),
-      ],
-      barcode: StickerBarcode('1234567890', x: 0, y: 20, height: 8),
-    );
-  }
-
-  void _testTsplFixed(PosPrinterRole role) {
-    // Fixed version dengan ukuran 40x30 sesuai media
-    CustomStickerPrinter.printSticker(
-      printer: printer,
-      role: role,
-      width: 40,          // mm - sesuaikan dengan media Anda
-      height: 30,         // mm - sesuaikan dengan media Anda
-      gap: 3,             // mm - gap antar label
-      marginLeft: 8,      // mm - margin kiri
-      marginTop: 2,       // mm - margin atas
-      texts: [
-        StickerText('STICKER FIXED', x: 0, y: 0, font: 3, size: 1),
-        StickerText('Normal orientation', x: 0, y: 8, font: 2, size: 1),
-        StickerText('40x30mm size', x: 0, y: 16, font: 1, size: 1),
-      ],
-      barcode: StickerBarcode('1234567890', x: 0, y: 20, height: 8),
-    );
-  }
-
-  void _testCustomSize(PosPrinterRole role) {
-    // Contoh dengan berbagai ukuran text dan positioning
-    CustomStickerPrinter.printSticker(
-      printer: printer,
-      role: role,
-      width: 40,
-      height: 30,
-      gap: 3,
-      marginLeft: 8,      // margin kiri lebih kecil
-      marginTop: 1,       // margin atas lebih kecil
-      texts: [
-        StickerText('BIG TEXT DARI LAHIR', x: 0, y: 0, font: 4, size: 2),       // text besar
-        StickerText('Medium', x: 0, y: 10, font: 3, size: 1),        // text sedang
-        StickerText('Small text here', x: 0, y: 18, font: 1, size: 1), // text kecil
-      ],
-    );
-  }
-
-  void _testMultiLine(PosPrinterRole role) {
-    // Contoh dengan banyak baris text
-    CustomStickerPrinter.printSticker(
-      printer: printer,
-      role: role,
-      width: 40,
-      height: 30,
-      gap: 3,
-      marginLeft: 1,
-      marginTop: 1,
-      texts: [
-        StickerText('Line 1', x: 0, y: 0, font: 2),
-        StickerText('Line 2', x: 0, y: 5, font: 2),
-        StickerText('Line 3', x: 0, y: 10, font: 2),
-        StickerText('Line 4', x: 0, y: 15, font: 2),
-        StickerText('Line 5', x: 0, y: 20, font: 2),
-      ],
-    );
-  }
-
-    // 🆕 DEMO ALIGNMENT - Left, Center, Right
-  void _testAlignment(PosPrinterRole role) {
-    CustomStickerPrinter.printSticker(
-      printer: printer,
-      role: role,
-      width: 40,
-      height: 30,
-      gap: 3,
-      marginLeft: 2,      // margin kiri
-      marginTop: 1,       // margin atas 
-      marginRight: 2,     // margin kanan (NEW!)
-      marginBottom: 2,    // margin bawah (NEW!)
-      texts: [
-        // Left aligned text (default)
-        StickerText('KIRI', x: 0, y: 0, font: 2, alignment: 'left'),
-        
-        // Center aligned text  
-        StickerText('TENGAH', x: 0, y: 7, font: 2, alignment: 'center'),
-        
-        // Right aligned text
-        StickerText('KANAN', x: 0, y: 14, font: 2, alignment: 'right'),
-        
-        // Right aligned with offset (5mm dari kanan)
-        StickerText('KANAN+5', x: 5, y: 21, font: 1, alignment: 'right'),
-      ],
-    );
-  }
-
-  // 🔥 DEMO KIRI & KANAN DALAM 1 LINE (NEW!)
-  void _testLeftRightSameLine(PosPrinterRole role) {
-    CustomStickerPrinter.printSticker(
-      printer: printer,
-      role: role,
-      width: 40,
-      height: 30,
-      gap: 3,
-      marginLeft: 2,
-      marginTop: 1,
-      marginRight: 2,
-      marginBottom: 2,
-      texts: [
-        // Line 1: Kode (kiri) + Harga (kanan) - SAME Y!
-        StickerText('SKU: ABC123', x: 0, y: 0, font: 2, alignment: 'left'),
-        StickerText('Rp 25.', x: 10, y: 0, font: 2, alignment: 'right'),
-        
-        // Line 2: Nama produk (tengah)
-        StickerText('KOPI ARABICA', x: 0, y: 7, font: 3, alignment: 'left'),
-        
-        // Line 3: Tanggal (kiri) + Batch (kanan) - SAME Y!
-        StickerText('01/09/25', x: 0, y: 14, font: 1, alignment: 'left'),
-        StickerText('B001', x: 0, y: 14, font: 1, alignment: 'right'),
-        
-        // Line 4: Made in (kiri) + QR code info (kanan) - SAME Y!
-        StickerText('Made in', x: 0, y: 21, font: 1, alignment: 'left'),
-        StickerText('Indonesia', x: 0, y: 21, font: 1, alignment: 'right'),
-      ],
-    );
-  }
-
-  // 🧾 INVOICE STYLE - Print per menu dengan format yang diminta
-  void _testInvoiceStyle(PosPrinterRole role) {
-    // Contoh data pesanan dengan 2 menu
-    final order = Order(
-      dateTime: DateTime.now(),
-      customerName: 'John Does', // 🆕 Nama customer
-      items: [
-        OrderItem(
-          name: 'Kopi Gula Aren',
-          modifications: ['Less Sugar', 'Extra Topping Oreo'], // 🆕 Pisahkan dari note
-          note: 'Saus Terpisah', // 🆕 Note terpisah lagi
-        ),
-        // OrderItem(
-        //   name: 'Es Teh Manis',
-        //   modifications: ['Extra Manis', 'Tambah Es', 'Gelas Besar'], // 🆕 Pisahkan dari note
-        //   note: 'Minum langsung', // 🆕 Note terpisah lagi
-        // ),
-      ],
-    );
-
-    // Print sticker untuk setiap menu (1 menu = 1 sticker)
-    for (int i = 0; i < order.items.length; i++) {
-      final item = order.items[i];
-      _printSingleMenuStickerOnly(role, order.dateTime, item, order.customerName); // 🆕 Pass customer name
-    }
-  }
-
-  // 🧾 Helper untuk print 1 menu sticker dengan format yang diminta
-  void _printSingleMenuStickerOnly(PosPrinterRole role, DateTime dateTime, OrderItem item, String customerName) {
-    List<StickerText> texts = [];
-    double currentY = 0;
-    
-    // 0. Nama customer (rata kiri, font 1 ukuran 1) - 🆕 PALING ATAS
-    texts.add(StickerText(customerName, x: 12, y: currentY, font: 1, size: 1, alignment: 'left'));
-    currentY += 4; // Spacing kecil
-    
-    // 1. Tanggal dan jam (rata kiri, font 1 ukuran 1)
-    final dateStr = '${dateTime.day} ${_getMonthName(dateTime.month)} ${dateTime.year} : ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-    texts.add(StickerText(dateStr, x: 12, y: currentY, font: 1, size: 1, alignment: 'left'));
-    currentY += 4; // Spacing lebih kecil
-    
-    // 2. Nama menu (rata kiri, font 1 ukuran 1 - SAMA dengan modification)
-    texts.add(StickerText(item.name, x: 12, y: currentY, font: 8, size: 1, alignment: 'left'));
-    currentY += 4; // Spacing kecil antara nama dan modification
-    
-    // 3. Gabung modifications dan note, font LEBIH KECIL (TSPL font 1 = terkecil)
-    List<String> allModsAndNotes = [];
-    if (item.modifications.isNotEmpty) {
-      allModsAndNotes.addAll(item.modifications);
-    }
-    if (item.note != null && item.note!.isNotEmpty) {
-      allModsAndNotes.add(item.note!); // 🆕 Tambah note ke list
-    }
-    
-    if (allModsAndNotes.isNotEmpty) {
-      final allText = allModsAndNotes.join(', '); // Gabung semua dengan koma
-      final wrappedMods = _wrapText(allText, 30); // max 30 char per line untuk font kecil
-
-      for (String line in wrappedMods) {
-        texts.add(StickerText(line, x: 12, y: currentY, font: 2, size: 1, alignment: 'left')); // 🔧 Font 1 = terkecil yang reliable
-        currentY += 3; // 🆕 Spacing lebih kecil untuk font kecil
-      }
-    }
-
-    // Hitung tinggi dinamis berdasarkan content yang ada - PENTING!
-    final calculatedHeight = (currentY + 6).clamp(15.0, 30.0); // min 15mm, max 30mm
-    
-    CustomStickerPrinter.printSticker(
-      printer: printer,
-      role: role,
-      width: 40,  // lebar 40mm sesuai request
-      height: calculatedHeight, // tinggi dinamis, bukan fixed 30mm
-      gap: 3,
-      marginLeft: 1,
-      marginTop: 1,
-      marginRight: 1,
-      marginBottom: 1,
-      texts: texts,
-    );
-  }
-
-  // Helper untuk wrap text otomatis
-  List<String> _wrapText(String text, int maxLength) {
-    if (text.length <= maxLength) return [text];
-    
-    List<String> lines = [];
-    String currentLine = '';
-    List<String> words = text.split(' ');
-    
-    for (String word in words) {
-      if ((currentLine + word).length <= maxLength) {
-        currentLine += (currentLine.isEmpty ? '' : ' ') + word;
-      } else {
-        if (currentLine.isNotEmpty) {
-          lines.add(currentLine);
-          currentLine = word;
-        } else {
-          // Word terlalu panjang, potong paksa
-          lines.add(word.substring(0, maxLength));
-          currentLine = word.substring(maxLength);
-        }
-      }
-    }
-    
-    if (currentLine.isNotEmpty) {
-      lines.add(currentLine);
-    }
-    
-    return lines;
-  }
 
 
   void _openDrawer(PosPrinterRole role) {
@@ -500,6 +231,63 @@ class _MyHomePageState extends State<MyHomePage> {
     final data = [0x1B, 0x40]; // ESC @ (initialize printer)
     printer.printRaw(role, data);
   }
+
+  // 🔍 Diagnostic: minimal ESC/POS test to verify connection for cashier role
+  void _diagnoseCashier(PosPrinterRole role) {
+    final b = EscPosBuilder();
+    b.text('*** DIAGNOSTIC TEST ***', bold: true, align: PosAlign.center);
+    b.text('Role: ${role.name}');
+    b.text('Time: ${DateTime.now().toIso8601String()}');
+    b.feed(2);
+    b.text('--- END ---', align: PosAlign.center);
+    b.cut();
+    printer.printEscPos(role, b);
+    setState(() {}); // to allow log viewer refresh
+  }
+
+  // 🔄 Print full transaction (compat style) for 56mm test
+  Future<void> _printCompatFinishedTransaction(PosPrinterRole role) async {
+    final tx = sample56mmTransaction();
+    final compatPrinter = FinishedTransactionCompatPrinter(
+      is80mm: false,
+      logoAssetPath: 'assets/images/akib.png', // print this logo at top
+    );
+    // Ensure the compat facade targets the currently selected role/device
+    if (_isConnected[role] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Printer not connected for this role'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    await compatPrinter.printTransaction(tx, role: role);
+  }
+
+  // 🆕 BLUE THERMAL COMPAT DEMO (Receipt style, minimal migration example)
+  void _compatReceiptDemo(PosPrinterRole role) {
+    final compat = BlueThermalCompatPrinter.instance;
+    compat.defaultRole = role; // ensure role
+    // set 80mm or 58mm example
+    compat.setPaper80mm(true);
+    // Use prefixed names to avoid clash with Flutter's Align widget
+  compat.printCustom('TOKO MAJU JAYA', Size.boldLarge.val, Align.center.val);
+  compat.printCustom('Jl. Contoh No. 1', Size.medium.val, Align.center.val);
+    compat.printNewLine();
+    compat.printLeftRight('Kasir:', 'Andi', Size.bold.val);
+    compat.printLeftRight('Tanggal:', '2025-09-14', Size.bold.val);
+    compat.printLeftRight('Waktu:', '14:33', Size.bold.val);
+    compat.printNewLine();
+    compat.printLeftRight('2x Nasi Goreng', '40.000', Size.bold.val);
+    compat.printLeftRight('1x Es Teh Manis', '8.000', Size.bold.val);
+    compat.printLeftRight('Tambah Telur', '5.000', Size.medium.val);
+    compat.printNewLine();
+    compat.printLeftRight('Sub Total', '53.000', Size.bold.val);
+    compat.printLeftRight('Pajak', '+5.300', Size.bold.val);
+    compat.printLeftRight('Total', '58.300', Size.boldLarge.val);
+    compat.printNewLine();
+  compat.printCustom('Terima Kasih :)', Size.bold.val, Align.center.val);
+    compat.paperCut();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -593,7 +381,12 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButton<String>(
-                    value: _selectedDeviceId[role],
+                    isExpanded: true,
+                    hint: const Text('Select Bluetooth device'),
+                    // Make safe: if selected id is no longer in the list, show null
+                    value: _bluetoothDevices.any((d) => d.id == _selectedDeviceId[role])
+                        ? _selectedDeviceId[role]
+                        : null,
                     items: _bluetoothDevices
                         .map((device) => DropdownMenuItem(
                               value: device.id,
@@ -617,121 +410,8 @@ class _MyHomePageState extends State<MyHomePage> {
                     decoration: const InputDecoration(labelText: 'Port'),
                   ),
                 ],
-                const SizedBox(height: 16),
-                const Text('🏷️ TEMPLATE STICKER SIAP PAKAI:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _testProductTemplate(role),
-                      child: const Text('Product 40x30'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testAddressTemplate(role),
-                      child: const Text('Address 58x40'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('🎯 CUSTOM STICKER TESTS:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _myCustomSticker(role),
-                      child: const Text('My Custom'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testTsplFixed(role),
-                      child: const Text('Fixed 40x30'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testCustomSize(role),
-                      child: const Text('Different Sizes'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testMultiLine(role),
-                      child: const Text('Multi Line'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('🧾 INVOICE STYLE:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
-                // Button ini sudah ada di bagian "KIRI-KANAN SAME LINE" 
-                const SizedBox(height: 8),
-                const Text('🆕 ALIGNMENT & MARGINS (NEW!):', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _testAlignment(role),
-                      child: const Text('Left|Center|Right'),
-                    ),
-                    // ElevatedButton(
-                    //   onPressed: () => _testFullMargins(role),
-                    //   child: const Text('Full Margins'),
-                    // ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('� LEVEL 1: SUPER SIMPLE (ONE-LINER):', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _testLevel1SimpleInvoice(role),
-                      child: const Text('Simple Invoice'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('⚙️ LEVEL 2: TEMPLATE WITH OPTIONS:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _testLevel2TemplateInvoice(role),
-                      child: const Text('Template Invoice'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('👨‍🍳 LEVEL 3: MULTI-MENU RESTAURANT:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.purple)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _testLevel3RestaurantOrder(role),
-                      child: const Text('Restaurant Order'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('💪 LEVEL 4: FULL CUSTOM (ADVANCED):', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _testLeftRightSameLine(role),
-                      child: const Text('Kiri & Kanan'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testInvoiceStyle(role),
-                      child: const Text('Invoice Style'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('⚙️ OTHER FUNCTIONS:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+              
+        
                 Wrap(
                   spacing: 8.0,
                   children: [
@@ -743,8 +423,39 @@ class _MyHomePageState extends State<MyHomePage> {
                       onPressed: () => _testRaw(role),
                       child: const Text('Test Raw'),
                     ),
+                    ElevatedButton(
+                      onPressed: () => _printBeverageStickers(role),
+                      child: const Text('beverages'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _printCompatFinishedTransaction(role),
+                      child: const Text('Compat Full Tx 56mm'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => _diagnoseCashier(role),
+                      child: const Text('Diagnostic Receipt'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => setState(() => _showLogs = !_showLogs),
+                      child: Text(_showLogs ? 'Hide Logs' : 'Show Logs'),
+                    ),
                   ],
                 ),
+                if (_showLogs) ...[
+                  const SizedBox(height: 12),
+                  Text('Logs (${printer.logs.length})', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 180),
+                    padding: const EdgeInsets.all(8),
+                    color: Colors.black12,
+                    child: SingleChildScrollView(
+                      child: Text(
+                        printer.logs.map((e) => '[${e.level.name}] ${e.message}').join('\n'),
+                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -764,44 +475,33 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
   
-  // 🚀 LEVEL 1: Super Simple Invoice (ONE-LINER)
-  void _testLevel1SimpleInvoice(PosPrinterRole role) {
-    CustomStickerPrinter.printInvoice(
-      printer: printer,
-      role: role,
-      customer: 'John Doe',
-      menu: 'Nasi Goreng Spesial',
-      details: 'Extra Pedas, Tanpa Bawang, Jangan asin',
-    );
-  }
 
-  // ⚙️ LEVEL 2: Template with Options
-  void _testLevel2TemplateInvoice(PosPrinterRole role) {
-    CustomStickerPrinter.printInvoiceSticker(
-      printer: printer,
-      role: role,
-      customerName: 'John Doe',
-      menuName: 'Nasi Goreng Spesial',
-      modifications: ['Extra Pedas', 'Tanpa Bawang'],
-      note: 'Jangan terlalu asin',
-      stickerSize: StickerSize.mm58x40,
-      fontSize: FontSize.large,
-    );
-  }
 
-  // 👨‍🍳 LEVEL 3: Multi-Menu Restaurant Style  
-  void _testLevel3RestaurantOrder(PosPrinterRole role) {
-    List<MenuItem> menuItems = [
-      MenuItem('Nasi Goreng Spesial', ['Extra Pedas', 'Tanpa Bawang'], 'Jangan terlalu asin'),
-      MenuItem('Es Teh Manis', ['Gelas Besar'], 'Banyak es'),
-    ];
 
-    CustomStickerPrinter.printRestaurantOrder(
-      printer: printer,
-      role: role,
-      customerName: 'John Doe',
-      menuItems: menuItems,
-    );
+
+
+
+  // 🥤 Print 3 beverage stickers (one by one) using BeverageStickerPrinter
+  Future<void> _printBeverageStickers(PosPrinterRole role) async {
+    // Use the same full transaction source so cashier & sticker outputs stay in sync.
+    final tx = sample56mmTransaction();
+    // Filter only beverage lines (heuristic in demo data helper)
+    final beverageLines = tx.transactions.where(isBeverageLine).toList();
+    if (beverageLines.isEmpty) {
+      // ignore: avoid_print
+      print('No beverage lines detected for sticker printing');
+      return;
+    }
+  final bevPrinter = BeverageStickerPrinter(
+    customerName: tx.customerName,
+    detailsCharBudget: 100, // test: allow more chars to see wrapping behavior
+    detailsJoinSeparator: ', ', // add comma separator between items
+    detailsWrapWidthChars: 24, // reduce by 1 char to avoid right edge
+    detailsMaxLines: 3, // limit details block to maximum 3 lines
+    autoGrowHeight: true, // show all trimmed content across lines
+    debugLog: true, // enable debug to see char count in console
+  );
+    await bevPrinter.printBeverageLines(beverageLines, role: role);
   }
 
 }

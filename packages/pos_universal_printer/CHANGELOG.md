@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.7
+
+### 🆕 Advanced Sticker Customization
+- **Enhanced BeverageStickerPrinter**: New modular sticker printing class for restaurants/cafes with per-quantity sticker support
+- **Font Weight Control**: Added `StickerWeight` enum (normal, semiBold, bold) with TSPL SETBOLD mapping and software-bold fallback
+- **Flexible Layout Controls**: Configurable spacing parameters (`detailsLineHeightMm`, `afterDetailsSpacingMm`, `timeBlockMm`, etc.)
+- **Smart Details Processing**: 
+  - Combined character budget for variants + additions + notes with configurable separator
+  - Intelligent text wrapping with character-based cutting for consistent line breaks
+  - Configurable max lines limit to prevent overflow
+  - Auto-grow height option for dynamic label sizing
+- **Debug Support**: Built-in debug logging for details processing and character counting
+- **Clean Architecture**: Refactored details processing into maintainable helper methods
+
+### 🔧 Code Quality
+- Improved text wrapping algorithm for better handling of spaced content
+- Cleaner separation of concerns in sticker generation logic
+- Enhanced configurability for production use cases
+
 ## 0.2.6
 
 ### 🔧 Lint Fix

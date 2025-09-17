@@ -55,9 +55,26 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler {
                     result.error("BT_WRITE", "Address missing", null)
                     return
                 }
-                val bytes = call.argument<ByteArray>("bytes") ?: run {
-                    result.error("BT_WRITE", "Bytes missing", null)
-                    return
+                // Accept either a ByteArray (ideal) or a List<Int> coming from Dart MethodChannel.
+                val raw = call.arguments as? Map<*, *>
+                val anyBytes = raw?.get("bytes")
+                val bytes: ByteArray = when (anyBytes) {
+                    is ByteArray -> anyBytes
+                    is List<*> -> {
+                        try {
+                            ByteArray(anyBytes.size) { idx ->
+                                val v = anyBytes[idx]
+                                if (v is Int) v.toByte() else 0
+                            }
+                        } catch (e: Exception) {
+                            result.error("BT_WRITE", "Failed to cast bytes: ${e.message}", null)
+                            return
+                        }
+                    }
+                    else -> {
+                        result.error("BT_WRITE", "Bytes missing or invalid type (${anyBytes?.javaClass})", null)
+                        return
+                    }
                 }
                 val ok = bluetoothController.write(address, bytes)
                 result.success(ok)
@@ -78,9 +95,25 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler {
                     return
                 }
                 val port = call.argument<Int>("port") ?: 9100
-                val bytes = call.argument<ByteArray>("bytes") ?: run {
-                    result.error("TCP_WRITE", "Bytes missing", null)
-                    return
+                val raw = call.arguments as? Map<*, *>
+                val anyBytes = raw?.get("bytes")
+                val bytes: ByteArray = when (anyBytes) {
+                    is ByteArray -> anyBytes
+                    is List<*> -> {
+                        try {
+                            ByteArray(anyBytes.size) { idx ->
+                                val v = anyBytes[idx]
+                                if (v is Int) v.toByte() else 0
+                            }
+                        } catch (e: Exception) {
+                            result.error("TCP_WRITE", "Failed to cast bytes: ${e.message}", null)
+                            return
+                        }
+                    }
+                    else -> {
+                        result.error("TCP_WRITE", "Bytes missing or invalid type (${anyBytes?.javaClass})", null)
+                        return
+                    }
                 }
                 val ok = tcpClient.write(host, port, bytes)
                 result.success(ok)

@@ -105,6 +105,12 @@ class StickerText {
   /// - right: x = jarak dari kanan (nilai positif = menjauh dari kanan)
   final String? alignment;
 
+  /// Ketebalan huruf (berat font)
+  /// - normal: standar printer
+  /// - semiBold: sedikit lebih tebal
+  /// - bold: tebal
+  final StickerWeight weight;
+
   /// Membuat objek StickerText untuk text pada sticker
   ///
   /// [text] adalah string yang akan dicetak
@@ -141,6 +147,7 @@ class StickerText {
     this.size = 1,
     this.rotation = 0,
     this.alignment = 'left',
+    this.weight = StickerWeight.normal,
   })  : assert(font >= 0 && font <= 8, 'Font harus antara 0-8'),
         assert(size >= 1 && size <= 10, 'Size harus antara 1-10'),
         assert([0, 90, 180, 270].contains(rotation),
@@ -148,6 +155,9 @@ class StickerText {
         assert(['left', 'center', 'right'].contains(alignment),
             'Alignment harus left, center, atau right');
 }
+
+/// Tiga level ketebalan huruf untuk TSPL (dipetakan ke SETBOLD)
+enum StickerWeight { normal, semiBold, bold }
 
 /// Class untuk mendefinisikan barcode pada sticker label
 ///
@@ -222,6 +232,43 @@ class StickerBarcode {
 /// );
 /// ```
 class CustomStickerPrinter {
+  /// Simplified sticker print API with minimal parameters.
+  ///
+  /// This uses sane defaults for direction/density/speed and applies a
+  /// uniform margin to all sides. Advanced tuning (bold emulation, ensureNewLabel,
+  /// y/reference adjustments) are intentionally hidden to keep usage simple.
+  static Future<void> printStickerSimple({
+    required PosUniversalPrinter printer,
+    required PosPrinterRole role,
+    required double width,
+    required double height,
+    required double gap,
+    double margin = 1,
+    required List<StickerText> texts,
+    StickerBarcode? barcode,
+    bool emulateBold = true,
+  }) async {
+    await printSticker(
+      printer: printer,
+      role: role,
+      width: width,
+      height: height,
+      gap: gap,
+      marginLeft: margin,
+      marginTop: margin,
+      marginRight: margin,
+      marginBottom: margin,
+      texts: texts,
+      barcode: barcode,
+      ensureNewLabel: false,
+      direction: 0,
+      density: 8,
+      speed: 2,
+      emulateBold: emulateBold,
+      yAdjustMm: 0.0,
+      referenceYAdjustMm: 0.0,
+    );
+  }
   /// Mencetak sticker dengan layout yang dapat dikustomisasi
   ///
   /// Method ini adalah "canvas" utama untuk membuat sticker. Anda dapat
@@ -346,6 +393,20 @@ class CustomStickerPrinter {
     int direction = 0, // 0=normal, 1=terbalik
     int density = 8, // 1-15 (kepadatan tinta)
     int speed = 2, // 1-6 (kecepatan print)
+    // If true, emulate bold/semibold with overstrike (duplicate TEXT with 1-dot offset)
+    // to support printers that ignore SETBOLD. Default false to avoid too-bold output
+    // on firmwares that already implement hardware bold.
+    bool emulateBold = false,
+    // Fine-tune vertical position of all texts relative to the label's origin
+    // (REFERENCE). Negative values move content up (closer to top edge),
+    // positive values move it down. Useful when TOP margin feels too big but
+    // setting marginTop=0 makes the next label inconsistent.
+    double yAdjustMm = 0.0,
+    // Adjust the printer REFERENCE Y directly. Negative reduces the top origin
+    // (closer to physical top), positive pushes it down. This is often more
+    // reliable than per-text yAdjust when printers differ in DIRECTION.
+    double referenceYAdjustMm = 0.0,
+    double backfeedMm = 0.0,
   }) async {
     final sb = StringBuffer();
     const double dotsPerMm = 8; // 203 DPI ≈ 8 dots/mm
@@ -359,10 +420,20 @@ class CustomStickerPrinter {
     sb.writeln('SIZE $width mm, $height mm');
     sb.writeln('GAP $gap mm, 0 mm');
     sb.writeln('DIRECTION $direction');
-    sb.writeln(
-        'REFERENCE ${(marginLeft * dotsPerMm).round()},${(marginTop * dotsPerMm).round()}');
+    // no OFFSET usage by default; keep behavior stable across firmwares
+  final refYmm = (marginTop + referenceYAdjustMm);
+  final refYdots = (refYmm < 0 ? 0 : (refYmm * dotsPerMm)).round();
+  sb.writeln(
+    'REFERENCE ${(marginLeft * dotsPerMm).round()},$refYdots');
     sb.writeln('SPEED $speed');
     sb.writeln('DENSITY $density');
+
+    // Optionally backfeed a little to start printing closer to the top edge.
+    // Many firmwares interpret BACKFEED value as dots. We convert mm->dots.
+    if (backfeedMm > 0) {
+      final bfDots = (backfeedMm * dotsPerMm).round();
+      if (bfDots > 0) sb.writeln('BACKFEED $bfDots');
+    }
 
     // Hitung area yang bisa digunakan untuk layout
     final printableWidth = width - marginLeft - marginRight;
@@ -388,10 +459,42 @@ class CustomStickerPrinter {
       }
 
       final xDots = (finalX * dotsPerMm).round();
-      final yDots = (text.y * dotsPerMm).round();
-      sb.writeln(
-          'TEXT $xDots,$yDots,"${text.font}",${text.rotation},${text.size},${text.size},"${text.text}"');
+  final yDots = ((text.y + yAdjustMm) * dotsPerMm).round();
+      // Hardware bold if available, else emulate with overstrike
+      if (!emulateBold) {
+        // Map ketebalan ke SETBOLD level (0=normal, 1=semi, 2=bold)
+        final boldLevel = switch (text.weight) {
+          StickerWeight.normal => 0,
+          StickerWeight.semiBold => 1,
+          StickerWeight.bold => 2,
+        };
+        sb.writeln('SETBOLD $boldLevel');
+        sb.writeln(
+            'TEXT $xDots,$yDots,"${text.font}",${text.rotation},${text.size},${text.size},"${text.text}"');
+      } else {
+        // Emulate bold: draw text multiple times with tiny offsets
+        // Keep hardware bold off
+        sb.writeln('SETBOLD 0');
+        sb.writeln(
+            'TEXT $xDots,$yDots,"${text.font}",${text.rotation},${text.size},${text.size},"${text.text}"');
+        switch (text.weight) {
+          case StickerWeight.normal:
+            break; // no extra pass
+          case StickerWeight.semiBold:
+            sb.writeln(
+                'TEXT ${xDots + 1},$yDots,"${text.font}",${text.rotation},${text.size},${text.size},"${text.text}"');
+            break;
+          case StickerWeight.bold:
+            sb.writeln(
+                'TEXT ${xDots + 1},$yDots,"${text.font}",${text.rotation},${text.size},${text.size},"${text.text}"');
+            sb.writeln(
+                'TEXT $xDots,${yDots + 1},"${text.font}",${text.rotation},${text.size},${text.size},"${text.text}"');
+            break;
+        }
+      }
     }
+    // Reset bold to normal to avoid affecting next jobs implicitly
+    sb.writeln('SETBOLD 0');
 
     // Tambahkan barcode jika ada
     if (barcode != null) {
@@ -737,6 +840,8 @@ class CustomStickerPrinter {
     double marginRight = 0,
     double marginBottom = 0,
     List<StickerBarcode>? barcodes,
+    bool emulateBold = false,
+    double yAdjustMm = 0.0,
   }) {
     final tspl = TsplBuilder();
 
@@ -748,7 +853,7 @@ class CustomStickerPrinter {
     // Add texts
     for (final text in texts) {
       double actualX = text.x + marginLeft;
-      double actualY = text.y + marginTop;
+  double actualY = text.y + marginTop + yAdjustMm;
 
       // Handle alignment
       if (text.alignment == 'center') {
@@ -761,8 +866,31 @@ class CustomStickerPrinter {
       final xDots = (actualX * 8).round();
       final yDots = (actualY * 8).round();
 
-      tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size,
-          text.text);
+      if (!emulateBold) {
+        // Hardware bold mapping for TsplBuilder (0/1/2)
+        final boldLevel = switch (text.weight) {
+          StickerWeight.normal => 0,
+          StickerWeight.semiBold => 1,
+          StickerWeight.bold => 2,
+        };
+        tspl.setBold(boldLevel);
+        tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size, text.text);
+      } else {
+        // Software bold: disable hardware bold and overstrike
+        tspl.setBold(0);
+        tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size, text.text);
+        switch (text.weight) {
+          case StickerWeight.normal:
+            break;
+          case StickerWeight.semiBold:
+            tspl.text(xDots + 1, yDots, text.font, text.rotation, text.size, text.size, text.text);
+            break;
+          case StickerWeight.bold:
+            tspl.text(xDots + 1, yDots, text.font, text.rotation, text.size, text.size, text.text);
+            tspl.text(xDots, yDots + 1, text.font, text.rotation, text.size, text.size, text.text);
+            break;
+        }
+      }
     }
 
     // Add barcodes if any
@@ -780,7 +908,8 @@ class CustomStickerPrinter {
       }
     }
 
-    tspl.printLabel(1);
+  tspl.setBold(0);
+  tspl.printLabel(1);
 
     return String.fromCharCodes(tspl.build());
   }

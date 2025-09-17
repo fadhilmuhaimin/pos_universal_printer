@@ -24,6 +24,13 @@ class TsplBuilder {
     _buffer.writeln('DENSITY $level');
   }
 
+  /// Sets bold level (0=normal, 1=semi-bold, 2=bold) if supported by firmware
+  void setBold(int level) {
+    if (level < 0) level = 0;
+    if (level > 2) level = 2;
+    _buffer.writeln('SETBOLD $level');
+  }
+
   /// Adds a text element at position ([x],[y]) in dots. [font] selects
   /// built‑in font (0–8), [rotation] is 0/90/180/270 degrees, and
   /// [xMultiplier]/[yMultiplier] scale the font size. [data] is

@@ -18,7 +18,7 @@ export 'src/protocols/tspl/builder.dart' show TsplBuilder;
 export 'src/protocols/cpcl/builder.dart' show CpclBuilder;
 export 'src/renderer/receipt_renderer.dart' show ReceiptItem, ReceiptRenderer;
 export 'src/helpers/custom_sticker.dart'
-    show StickerText, StickerBarcode, CustomStickerPrinter, MenuItemModel;
+  show StickerText, StickerBarcode, CustomStickerPrinter, MenuItemModel, StickerWeight;
 // Blue thermal compatibility facade
 export 'blue_thermal_compat.dart'
     show BlueThermalCompatPrinter, Size, Align, CompatLine;

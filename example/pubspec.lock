@@ -213,7 +213,7 @@ packages:
       path: "../packages/pos_universal_printer"
       relative: true
     source: path
-    version: "0.1.3"
+    version: "0.2.6"
   pos_universal_printer_android:
     dependency: "direct main"
     description:
