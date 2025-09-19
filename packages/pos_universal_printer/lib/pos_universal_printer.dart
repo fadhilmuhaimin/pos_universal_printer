@@ -1,6 +1,3 @@
-/// POS Universal Printer public API library.
-library pos_universal_printer;
-
 import 'dart:async';
 import 'dart:convert';
 
@@ -10,6 +7,7 @@ import 'src/core/manager.dart';
 import 'src/core/logging.dart';
 import 'src/protocols/escpos/builder.dart';
 import 'src/renderer/receipt_renderer.dart';
+import 'package:flutter/services.dart' show EventChannel;
 
 // Public re-exports for builders and renderer so users don't import from src/.
 export 'src/protocols/escpos/builder.dart'
@@ -18,7 +16,14 @@ export 'src/protocols/tspl/builder.dart' show TsplBuilder;
 export 'src/protocols/cpcl/builder.dart' show CpclBuilder;
 export 'src/renderer/receipt_renderer.dart' show ReceiptItem, ReceiptRenderer;
 export 'src/helpers/custom_sticker.dart'
-  show StickerText, StickerBarcode, CustomStickerPrinter, MenuItemModel, StickerWeight;
+    show
+        StickerText,
+        StickerBarcode,
+        CustomStickerPrinter,
+        MenuItemModel,
+        StickerWeight;
+export 'src/core/manager.dart'
+    show ConnectionEvent, ConnectionStatus, ConnectionKind;
 // Blue thermal compatibility facade
 export 'blue_thermal_compat.dart'
     show BlueThermalCompatPrinter, Size, Align, CompatLine;
@@ -64,12 +69,16 @@ class PrinterDevice {
 class PosUniversalPrinter {
   PosUniversalPrinter._() {
     _manager = PosPrinterManager(_channel, _logger);
+    // Ensure event listening starts early to catch native events even after hot reload
+    _manager.ensureEventListening(_events);
   }
 
   /// Entry point for printing receipts/labels and managing printer roles.
   static final PosUniversalPrinter instance = PosUniversalPrinter._();
 
   static const MethodChannel _channel = MethodChannel('pos_universal_printer');
+  static const EventChannel _events =
+      EventChannel('pos_universal_printer/events');
   final Logger _logger = Logger();
   late final PosPrinterManager _manager;
 
@@ -173,4 +182,50 @@ class PosUniversalPrinter {
     await _manager.dispose();
     await _logController.close();
   }
+
+  /// Stream of connection state changes across all roles.
+  Stream<ConnectionEvent> get connectionEvents => _manager.connectionEvents;
+
+  /// Enables or disables auto-reconnect for the specified [role]. If enabled,
+  /// the manager will attempt to reconnect when a disconnection is detected.
+  void setAutoReconnect(PosPrinterRole role, bool enabled) {
+    _manager.setAutoReconnect(role, enabled);
+  }
+
+  /// Internal: start listening to native event channel (idempotent).
+  void ensureEventListening() {
+    _manager.ensureEventListening(_events);
+  }
+
+  /// Forces sync with native side after hot reload: checks any still-open
+  /// native Bluetooth sockets and emits events accordingly.
+  Future<void> resyncConnections() async {
+    await _manager.resyncConnections();
+  }
+
+  /// Disconnect all native Bluetooth sockets (safety valve when Dart state
+  /// is reset by hot reload but native sockets persist).
+  Future<void> forceDisconnectAllBluetooth() async {
+    await _channel.invokeMethod('disconnectAllBluetooth');
+  }
+
+  /// Disconnect a specific Bluetooth device by MAC [address]. This is a
+  /// precise alternative to [forceDisconnectAllBluetooth] when you know
+  /// which device to close.
+  Future<void> disconnectBluetoothAddress(String address) async {
+    try {
+      await _channel.invokeMethod('disconnectBluetooth', {
+        'address': address,
+      });
+    } on PlatformException catch (_) {
+      // ignore; best-effort disconnect
+    }
+  }
+
+  /// Snapshot of registered devices per role.
+  Map<PosPrinterRole, PrinterDevice> get registeredDevices =>
+      _manager.registeredDevices;
+
+  /// Returns whether a role is currently connected.
+  bool isRoleConnected(PosPrinterRole role) => _manager.isRoleConnected(role);
 }

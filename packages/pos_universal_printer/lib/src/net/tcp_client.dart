@@ -14,6 +14,7 @@ class TcpClient {
     this.timeout = const Duration(seconds: 5),
     this.autoReconnect = true,
     this.maxRetries = 3,
+    this.onConnectionChanged,
   });
 
   final String host;
@@ -22,6 +23,7 @@ class TcpClient {
   final Duration timeout;
   final bool autoReconnect;
   final int maxRetries;
+  final void Function(bool connected)? onConnectionChanged;
 
   Socket? _socket;
   bool _connecting = false;
@@ -48,10 +50,18 @@ class TcpClient {
         _bytesSent = 0;
         _connectionStart = DateTime.now();
         logger.add(LogLevel.info, 'Connected to $host:$port');
+        // notify connected
+        try {
+          onConnectionChanged?.call(true);
+        } catch (_) {}
         // Listen for errors.
         socket.done.then((_) {
           logger.add(LogLevel.warning, 'Socket to $host:$port closed');
           _socket = null;
+          // notify disconnected
+          try {
+            onConnectionChanged?.call(false);
+          } catch (_) {}
           if (autoReconnect) {
             logger.add(LogLevel.info, 'Attempting to reconnect to $host:$port');
             // Fire and forget reconnect.
@@ -110,6 +120,9 @@ class TcpClient {
   Future<void> close() async {
     await _socket?.close();
     _socket = null;
+    try {
+      onConnectionChanged?.call(false);
+    } catch (_) {}
   }
 
   /// Returns the average throughput in bytes per second since the

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart' hide Align; // hide Flutter Align to use compat Align enum
 import 'package:pos_universal_printer/pos_universal_printer.dart';
-import 'package:pos_universal_printer/src/helpers/custom_sticker.dart';
 import 'demo_transaction_data.dart';
 import 'finished_transaction_compat.dart';
 import 'dart:io';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'dart:ui' as ui;
+import 'package:shared_preferences/shared_preferences.dart';
+// removed unused imports
 
 
 
@@ -69,6 +68,101 @@ class _MyHomePageState extends State<MyHomePage> {
       _isDisconnecting[role] = false;
       _isConnected[role] = false;
     }
+    // Listen to connection events and auto-update indicator
+    printer.connectionEvents.listen((evt) {
+      setState(() {
+        _isConnected[evt.role] = evt.status == ConnectionStatus.connected;
+      });
+    });
+    // Ensure Bluetooth permissions (Android 12+) so restore/scan can work
+    _ensureBluetoothPermissions().then((_) {
+      // Restore last selections and auto-reconnect if possible, then resync
+      return _restoreSelectionsAndReconnect();
+    }).whenComplete(() {
+      // Resync native sockets (useful after hot reload)
+      printer.resyncConnections();
+    });
+    // Auto-populate bonded Bluetooth devices so dropdown has items on first load
+    _scanBluetoothDevices();
+  }
+
+  Future<void> _ensureBluetoothPermissions() async {
+    if (!Platform.isAndroid) return;
+    final statuses = await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+    ].request();
+    final scanOk = statuses[Permission.bluetoothScan] == PermissionStatus.granted;
+    final connectOk = statuses[Permission.bluetoothConnect] == PermissionStatus.granted;
+    if (!scanOk || !connectOk) {
+      // Optional: surface a message; scanning/connect will guard too.
+    }
+  }
+
+  // Flutter hot reload calls reassemble() (not initState). Make sure
+  // native sockets and UI state are reconciled to avoid ghost connections.
+  @override
+  void reassemble() {
+    super.reassemble();
+    // Option B: preserve connection if native sockets still alive.
+    // 1) Resync from native
+    printer.resyncConnections().then((_) {
+      // 2) Hydrate UI selections from registered devices
+      final regs = printer.registeredDevices;
+      setState(() {
+        for (var role in PosPrinterRole.values) {
+          final dev = regs[role];
+          if (dev != null) {
+            _selectedType[role] = dev.type;
+            if (dev.type == PrinterType.bluetooth) {
+              _selectedDeviceId[role] = dev.address ?? dev.id;
+            } else if (dev.type == PrinterType.tcp) {
+              _ipControllers[role]?.text = dev.address ?? '';
+              _portControllers[role]?.text = dev.port?.toString() ?? '9100';
+            }
+          }
+          _isConnected[role] = printer.isRoleConnected(role);
+        }
+      });
+    });
+  }
+
+  Future<void> _restoreSelectionsAndReconnect() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (var role in PosPrinterRole.values) {
+      final typeStr = prefs.getString('role_${role.name}_type');
+      final addr = prefs.getString('role_${role.name}_address');
+      final ip = prefs.getString('role_${role.name}_ip');
+      final port = prefs.getInt('role_${role.name}_port');
+      if (typeStr == null) continue;
+      final type = typeStr == 'tcp' ? PrinterType.tcp : PrinterType.bluetooth;
+      setState(() {
+        _selectedType[role] = type;
+        if (type == PrinterType.bluetooth) {
+          _selectedDeviceId[role] = addr;
+        } else {
+          _ipControllers[role]?.text = ip ?? '';
+          _portControllers[role]?.text = (port ?? 9100).toString();
+        }
+      });
+      // try register and enable auto-reconnect
+      PrinterDevice? device;
+      if (type == PrinterType.bluetooth && addr != null && addr.isNotEmpty) {
+        device = PrinterDevice(id: addr, name: 'Restored BT', type: type, address: addr);
+      } else if (type == PrinterType.tcp && ip != null && ip.isNotEmpty) {
+        final p = port ?? 9100;
+        device = PrinterDevice(id: '$ip:$p', name: 'Restored TCP', type: type, address: ip, port: p);
+      }
+      if (device != null) {
+        try {
+          await printer.registerDevice(role, device);
+          printer.setAutoReconnect(role, true);
+          // Do not mark connected eagerly; rely on connectionEvents/resync for truth
+        } catch (_) {
+          // ignore failing restoration
+        }
+      }
+    }
   }
 
   // 🆕 Method untuk connect printer dengan loading
@@ -109,6 +203,23 @@ class _MyHomePageState extends State<MyHomePage> {
 
       if (device != null) {
         await printer.registerDevice(role, device);
+        // Enable auto reconnect for this role
+        printer.setAutoReconnect(role, true);
+        // Persist selection
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('role_${role.name}_type',
+            device.type == PrinterType.tcp ? 'tcp' : 'bluetooth');
+        if (device.type == PrinterType.bluetooth) {
+          await prefs.setString('role_${role.name}_address', device.address ?? device.id);
+          await prefs.remove('role_${role.name}_ip');
+          await prefs.remove('role_${role.name}_port');
+        } else {
+          if (device.address != null) {
+            await prefs.setString('role_${role.name}_ip', device.address!);
+          }
+          await prefs.setInt('role_${role.name}_port', device.port ?? 9100);
+          await prefs.remove('role_${role.name}_address');
+        }
         
         setState(() {
           _isConnected[role] = true;
@@ -142,7 +253,24 @@ class _MyHomePageState extends State<MyHomePage> {
     });
 
     try {
+      // Disable auto-reconnect for this role first to prevent immediate re-connect
+      printer.setAutoReconnect(role, false);
+      // Capture the address we think is connected so we can target-disconnect
+      final savedAddress = _selectedType[role] == PrinterType.bluetooth
+          ? _selectedDeviceId[role]
+          : null;
       await printer.unregisterDevice(role);
+      // Extra safety: target-close this device (avoid disconnecting other roles)
+      if (savedAddress != null && savedAddress.isNotEmpty) {
+        await printer.disconnectBluetoothAddress(savedAddress);
+      }
+      await printer.resyncConnections();
+      await printer.resyncConnections();
+  // Clear persisted selection for this role (only state, keep type)
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('role_${role.name}_address');
+  await prefs.remove('role_${role.name}_ip');
+  await prefs.remove('role_${role.name}_port');
 
       setState(() {
         _isConnected[role] = false;
@@ -263,30 +391,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // 🆕 BLUE THERMAL COMPAT DEMO (Receipt style, minimal migration example)
-  void _compatReceiptDemo(PosPrinterRole role) {
-    final compat = BlueThermalCompatPrinter.instance;
-    compat.defaultRole = role; // ensure role
-    // set 80mm or 58mm example
-    compat.setPaper80mm(true);
-    // Use prefixed names to avoid clash with Flutter's Align widget
-  compat.printCustom('TOKO MAJU JAYA', Size.boldLarge.val, Align.center.val);
-  compat.printCustom('Jl. Contoh No. 1', Size.medium.val, Align.center.val);
-    compat.printNewLine();
-    compat.printLeftRight('Kasir:', 'Andi', Size.bold.val);
-    compat.printLeftRight('Tanggal:', '2025-09-14', Size.bold.val);
-    compat.printLeftRight('Waktu:', '14:33', Size.bold.val);
-    compat.printNewLine();
-    compat.printLeftRight('2x Nasi Goreng', '40.000', Size.bold.val);
-    compat.printLeftRight('1x Es Teh Manis', '8.000', Size.bold.val);
-    compat.printLeftRight('Tambah Telur', '5.000', Size.medium.val);
-    compat.printNewLine();
-    compat.printLeftRight('Sub Total', '53.000', Size.bold.val);
-    compat.printLeftRight('Pajak', '+5.300', Size.bold.val);
-    compat.printLeftRight('Total', '58.300', Size.boldLarge.val);
-    compat.printNewLine();
-  compat.printCustom('Terima Kasih :)', Size.bold.val, Align.center.val);
-    compat.paperCut();
-  }
+  // removed unused _compatReceiptDemo
 
 
   @override
@@ -311,6 +416,14 @@ class _MyHomePageState extends State<MyHomePage> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
+                    IconButton(
+                      tooltip: 'Force disconnect all (hot reload recovery)',
+                      icon: const Icon(Icons.power_settings_new),
+                      onPressed: () async {
+                        await printer.forceDisconnectAllBluetooth();
+                        await printer.resyncConnections();
+                      },
+                    ),
                     Expanded(
                       child: DropdownButton<PrinterType>(
                         value: _selectedType[role],
@@ -325,6 +438,16 @@ class _MyHomePageState extends State<MyHomePage> {
                             _selectedType[role] = value!;
                           });
                         },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // live status dot
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: _isConnected[role] == true ? Colors.green : Colors.red,
+                        shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -386,13 +509,27 @@ class _MyHomePageState extends State<MyHomePage> {
                     // Make safe: if selected id is no longer in the list, show null
                     value: _bluetoothDevices.any((d) => d.id == _selectedDeviceId[role])
                         ? _selectedDeviceId[role]
-                        : null,
-                    items: _bluetoothDevices
-                        .map((device) => DropdownMenuItem(
-                              value: device.id,
-                              child: Text('${device.name} (${device.id})'),
-                            ))
-                        .toList(),
+                        : (_selectedDeviceId[role] == null ? null : _selectedDeviceId[role]),
+                    items: () {
+                      final items = _bluetoothDevices
+                          .map((device) => DropdownMenuItem(
+                                value: device.id,
+                                child: Text('${device.name} (${device.id})'),
+                              ))
+                          .toList();
+                      final sel = _selectedDeviceId[role];
+                      if (sel != null && !_bluetoothDevices.any((d) => d.id == sel)) {
+                        // Include a placeholder for the saved device so it's visible/selectable
+                        items.insert(
+                          0,
+                          DropdownMenuItem(
+                            value: sel,
+                            child: Text('Saved device ($sel)'),
+                          ),
+                        );
+                      }
+                      return items;
+                    }(),
                     onChanged: (value) {
                       setState(() {
                         _selectedDeviceId[role] = value;

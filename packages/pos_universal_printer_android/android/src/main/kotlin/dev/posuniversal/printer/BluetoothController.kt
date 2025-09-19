@@ -69,6 +69,21 @@ class BluetoothController(private val context: Context) {
     }
 
     /**
+     * Returns true if we have a socket tracked for [address] that is currently
+     * reported connected. Note: for SPP this may still return true when the
+     * device is out of range until the next IO failure. Use in combination
+     * with ACL broadcast events for reliability.
+     */
+    fun isConnected(address: String): Boolean {
+        val socket = sockets[address] ?: return false
+        return try {
+            socket.isConnected
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /**
      * Sends [bytes] to the connected device identified by [address].
      * Returns true on success.
      */
@@ -82,6 +97,19 @@ class BluetoothController(private val context: Context) {
         } catch (e: IOException) {
             Log.e("BluetoothController", "Write failed for $address", e)
             false
+        }
+    }
+
+    /** Returns a snapshot of currently tracked/connected addresses. */
+    fun listConnected(): List<String> {
+        return sockets.filter { it.value.isConnected }.map { it.key }
+    }
+
+    /** Disconnects all tracked sockets. */
+    fun disconnectAll() {
+        val keys = sockets.keys.toList()
+        for (addr in keys) {
+            disconnect(addr)
         }
     }
 }

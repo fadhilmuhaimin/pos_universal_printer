@@ -1,9 +1,7 @@
 # pos_universal_printer
 
-**The modern alternative to blue_thermal_printer** - A powerful Flutter plugin for printing POS receipts and labels on thermal printers. Drop-in replacement for blue_thermal_printer with enhanced features, better reliability, and cross-platform support.
-
-**Perfect migration path from blue_thermal_printer** with compatibility API included. Supports ESC/POS (receipts), TSPL and CPCL (labels). Desi---
-## 🔄 Blue Thermal Printer Migration Guide
+The modern alternative to blue_thermal_printer. A Flutter plugin for POS thermal printing with better reliability, cross‑platform support, and a straightforward migration path.
+## Blue Thermal Printer Migration Guide
 
 ### Why Switch from blue_thermal_printer?
 
@@ -18,60 +16,20 @@
 | ❌ Basic text only | ✅ Rich formatting + images |
 | ❌ Maintenance issues | ✅ Actively maintained |
 
-### Instant Migration (3 Steps)
+### Quick migration from blue_thermal_printer (3 steps)
+1) Add the `pos_universal_printer` dependency (remove `blue_thermal_printer`).
+2) Change the import to `package:pos_universal_printer/blue_thermal_compat.dart`.
+3) Your existing code continues to work; then gradually adopt new features.
 
-**Step 1:** Update pubspec.yaml
-```yaml
-dependencies:
-  # blue_thermal_printer: ^0.3.1  # Remove this
-  pos_universal_printer: ^0.2.7   # Add this
-```
+For a complete reference (Bluetooth/TCP, auto‑reconnect, state restore, stickers), see the example app:
 
-**Step 2:** Change import only
-```dart
-// OLD
-// import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+https://github.com/fadhilmuhaimin/pos_universal_printer/blob/main/example/lib/main.dart
 
-// NEW (100% compatible API)
-import 'package:pos_universal_printer/blue_thermal_compat.dart';
-```
-
-**Step 3:** Your existing code works unchanged!
-```dart
-// All your existing blue_thermal_printer code works exactly the same
-BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
-List<BluetoothDevice> devices = await bluetooth.getBondedDevices();
-await bluetooth.connect(device);
-await bluetooth.writeBytes(bytes);
-```
-
-### Advanced Features After Migration
-
-Once migrated, you can gradually adopt new features:
-
-```dart
-// Keep using blue_thermal_printer API for existing code
-await bluetooth.writeBytes(receiptBytes);
-
-// Add new sticker printing capabilities  
-await CustomStickerPrinter.printInvoice(
-  printer: PosUniversalPrinter.instance,
-  role: PosPrinterRole.sticker,
-  customer: 'John Doe',
-  menu: 'Special Coffee',
-  details: 'Extra Hot, No Sugar',
-);
-
-// Add logo printing
-await BlueThermalCompatPrinter.printLogoAndLines([
-  'Your Business Name',
-  '123 Main Street',
-  'Thank you!',
-], role: PosPrinterRole.cashier);
-```
+If this package helps you, please star the repository.
 
 ---
-## 🏪 Restaurant/Kitchen Setup Guideed for multi‑role routing (cashier, kitchen, sticker) with job queue, retries, Bluetooth Classic (Android), and TCP/IP (Android & iOS).
+## Restaurant/Kitchen Setup Guide
+Multi‑role routing (cashier, kitchen, sticker) with job queue, retries, Bluetooth Classic (Android), and TCP/IP (Android & iOS).
 
 ## Features
 
@@ -80,10 +38,10 @@ await BlueThermalCompatPrinter.printLogoAndLines([
 - ESC/POS: text, alignment, bold, barcode, QR, feed/cut, cash drawer (ESC p).
 - TSPL & CPCL: builders for labels (TEXT/BARCODE/QRCODE/BITMAP/PRINT).
 - **🆕 Custom Sticker API**: Easy-to-use helper for TSPL sticker printing with advanced text processing
-  - **Semantic Font Weights** (v0.2.7): Normal, semiBold, bold with software fallback for enhanced visibility
-  - **Smart Text Wrapping** (v0.2.7): Character-based wrapping with configurable line limits and separators
-  - **Details Budget System** (v0.2.7): Automatic truncation for variants/additions/notes to prevent overflow
-  - **Precision Layout Control** (v0.2.7): Fine-tune margins, alignment, and text positioning for consistent output
+  - Semantic Font Weights (since 0.2.7): Normal, semiBold, bold with software fallback for enhanced visibility
+  - Smart Text Wrapping (since 0.2.7): Character-based wrapping with configurable line limits and separators
+  - Details Budget System (since 0.2.7): Automatic truncation for variants/additions/notes to prevent overflow
+  - Precision Layout Control (since 0.2.7): Fine-tune margins, alignment, and text positioning for consistent output
 - Multi‑role mapping (cashier, kitchen, sticker).
 - Connectivity: Bluetooth Classic (Android) and TCP 9100 (Android & iOS).
 - Reliability: job queue with retry, TCP auto‑reconnect; BT write reconnect fallback.
@@ -106,100 +64,22 @@ Add the package from pub.dev:
 
 ```yaml
 dependencies:
-  pos_universal_printer: ^0.2.7
+  pos_universal_printer: ^0.2.8
 ```
 
 For Git usage in a monorepo, see the repository README for dependency_overrides instructions.
 
 ## Quick start
 
-### 🔄 Migrating from blue_thermal_printer? 
-**Zero-code migration** - just change the import and you're done!
+See the example app for a full implementation: device selection, connect/disconnect, auto‑scan, auto‑reconnect, connection events, ESC/POS receipts, and TSPL stickers.
 
-```dart
-// OLD: blue_thermal_printer 
-// import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+Source: https://github.com/fadhilmuhaimin/pos_universal_printer/blob/main/example/lib/main.dart
 
-// NEW: pos_universal_printer (blue_thermal_printer compatible API)
-import 'package:pos_universal_printer/blue_thermal_compat.dart';
+## Custom Sticker API
 
-// Your existing blue_thermal_printer code works unchanged!
-BlueThermalPrinter bluetooth = BlueThermalPrinter.instance;
-```
+The custom sticker API has been available since 0.2.0, with key improvements in 0.2.7 and connection fixes in 0.2.8.
 
-### 🆕 New Project Setup
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:pos_universal_printer/pos_universal_printer.dart';
-
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(title: const Text('pos_universal_printer example')),
-        body: Center(
-          child: ElevatedButton(
-            onPressed: () async {
-              final pos = PosUniversalPrinter.instance;
-              await pos.registerDevice(
-                PosPrinterRole.cashier,
-                PrinterDevice(
-                  id: '192.168.1.50:9100',
-                  name: 'Cashier LAN',
-                  type: PrinterType.tcp,
-                  address: '192.168.1.50',
-                  port: 9100,
-                ),
-              );
-              pos.openDrawer(PosPrinterRole.cashier);
-            },
-            child: const Text('Test Open Drawer'),
-          ),
-        ),
-      ),
-    );
-  }
-}
-```
-
-## 🆕 Custom Sticker API
-
-Version 0.2.0 introduces a powerful and easy-to-use custom sticker API for TSPL printers with advanced customization options in 0.2.7:
-
-### 🎯 Setup for Your Package
-
-#### Basic Setup
-```dart
-// 1. Add to pubspec.yaml
-dependencies:
-  pos_universal_printer: ^0.2.7
-
-// 2. Import in your Dart files
-import 'package:pos_universal_printer/pos_universal_printer.dart';
-
-// 3. Initialize printer instance (typically in main.dart or service)
-final PosUniversalPrinter printer = PosUniversalPrinter.instance;
-
-// 4. Register your printer devices by role
-await printer.registerDevice(
-  PosPrinterRole.sticker,  // or .cashier, .kitchen
-  PrinterDevice(
-    id: 'sticker_printer_1',
-    name: 'Beverage Station',
-    type: PrinterType.bluetooth,  // or .tcp
-    address: 'AA:BB:CC:DD:EE:FF', // BT MAC or IP
-    port: 9100, // for TCP only
-  ),
-);
-```
+For full guidance (sizes, character limits, margins), refer to the example app and inline comments. The focus is smooth migration from blue_thermal_printer while providing a clean TSPL label API.
 
 #### Advanced Restaurant/Cafe Setup
 ```dart
@@ -262,63 +142,7 @@ class RestaurantPrinterService {
 }
 ```
 
-### Bluetooth Connect/Disconnect with Loading
-
-```dart
-import 'package:pos_universal_printer/pos_universal_printer.dart';
-
-class PrinterManager {
-  final PosUniversalPrinter printer = PosUniversalPrinter.instance;
-  bool _isConnecting = false;
-  bool _isDisconnecting = false;
-  bool _isConnected = false;
-
-  // Connect printer with loading state
-  Future<void> connectPrinter(PosPrinterRole role, PrinterDevice device) async {
-    _isConnecting = true;
-    // Update UI to show loading...
-
-    try {
-      await printer.registerDevice(role, device);
-      _isConnected = true;
-      // Show success message
-    } catch (e) {
-      // Show error message
-      print('Connection failed: $e');
-    } finally {
-      _isConnecting = false;
-      // Update UI to hide loading
-    }
-  }
-
-  // Disconnect printer with loading state
-  Future<void> disconnectPrinter(PosPrinterRole role) async {
-    _isDisconnecting = true;
-    // Update UI to show loading...
-
-    try {
-      await printer.unregisterDevice(role);
-      _isConnected = false;
-      // Show disconnect message
-    } catch (e) {
-      // Show error message
-      print('Disconnect failed: $e');
-    } finally {
-      _isDisconnecting = false;
-      // Update UI to hide loading
-    }
-  }
-
-  // Scan Bluetooth devices
-  Future<List<PrinterDevice>> scanBluetooth() async {
-    List<PrinterDevice> devices = [];
-    await for (PrinterDevice device in printer.scanBluetooth()) {
-      devices.add(device);
-    }
-    return devices;
-  }
-}
-```
+For connect/disconnect with loading, scanning, and connection status events, refer to the example file to stay aligned with the latest version.
 
 ## Sticker Printing
 
@@ -432,7 +256,7 @@ pos.printTspl(PosPrinterRole.sticker, String.fromCharCodes(tspl.build()));
 pos.printTspl(PosPrinterRole.sticker, TsplBuilder.sampleLabel40x30());
 ```
 
-**Fix for upside down text:** Use `DIRECTION 0` instead of `DIRECTION 1`.
+Orientation note: use `DIRECTION 0` to avoid upside‑down text.
 
 If a single label causes two labels to feed:
 - Calibrate media from the printer (GAP/BLACK MARK detect).
@@ -440,7 +264,7 @@ If a single label causes two labels to feed:
 - Ensure `CLS`, `DIRECTION`, and `REFERENCE` are set before elements.
 
 ---
-## 🔄 Blue Thermal Printer Migration (Compat API)
+## Blue Thermal Printer Migration (Compat API)
 Seamlessly reuse almost all of your existing `blue_thermal_printer` logic.
 
 ```dart
@@ -474,9 +298,9 @@ await bt.printLogoAndLines(
   assetLogoPath: 'assets/images/akib.png',
   lines: [
     CompatLine.text('My Shop', bold: true, align: Align.center),
-    CompatLine.text('Jl. Contoh 123'),
+    CompatLine.text('123 Sample St'),
     CompatLine.leftRight('Subtotal', '100.000'),
-    CompatLine.leftRight('Diskon', '-5.000'),
+    CompatLine.leftRight('Discount', '-5.000'),
     CompatLine.leftRight('TOTAL', '95.000', bold: true),
   ],
   preferBitImage: true, // fallback to ESC * if raster unsupported
@@ -496,7 +320,7 @@ flutter:
 Make sure the asset path matches exactly (case sensitive on some systems).
 
 ---
-## � Restaurant/Kitchen Setup Guide
+## Restaurant/Kitchen Setup Guide
 
 ### Reliable Kitchen Printer Connectivity
 For kitchens located far from the cashier (tablet Android), **LAN/TCP is the most reliable option**:
@@ -612,7 +436,7 @@ await CustomStickerPrinter.printInvoiceSticker(
 ```
 
 ---
-## 🛠 Troubleshooting
+## Troubleshooting
 
 ### Common blue_thermal_printer Migration Issues
 
@@ -629,7 +453,7 @@ await CustomStickerPrinter.printInvoiceSticker(
 |---------|-------|-----|
 | **Font weight not visible** | Printer ignores SETBOLD command | Enable software fallback: `weight: StickerWeight.bold` (overstrike enabled automatically) |
 | **Details text overflows sticker** | Character budget too high | Reduce `detailsCharBudget` or increase `detailsMaxLines` |
-| **Text wrapped in wrong places** | Word-based wrapping with spaces | Use character-based wrapping (built-in for v0.2.7) |
+| **Text wrapped in wrong places** | Word-based wrapping with spaces | Use character-based wrapping (available since 0.2.7) |
 | **Right margin too tight** | Wrap width too wide | Reduce `detailsWrapWidthChars` by 1-2 characters |
 | **Top margin inconsistent between labels** | Using y-position adjustments | Use `currentY` offset instead of modifying `y` parameters |
 | Second label starts mid‑way | Printer not fully resetting buffer timing | Add small delay (already built‑in), keep `ensureNewLabel=false` unless required |
@@ -641,7 +465,7 @@ await CustomStickerPrinter.printInvoiceSticker(
 | QR empty | Data too long for size | Shorten data or increase module size (not yet exposed) |
 
 ---
-## 🔍 Logging & Debug
+## Logging & Debug
 Use in‑memory logger exposed by `PosUniversalPrinter.instance.logs`.
 
 ```dart
@@ -667,10 +491,10 @@ The example app includes a live log viewer to inspect raw TSPL / ESC/POS sequenc
 ---
 ## Support & Community
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/fadhilmuhaimin/pos_universal_printer/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/fadhilmuhaimin/pos_universal_printer/discussions) 
-- 📦 **Package**: [pub.dev](https://pub.dev/packages/pos_universal_printer)
-- 🔄 **Migration Help**: Tag your issues with `blue_thermal_printer migration` for priority support
+- Issues: [GitHub Issues](https://github.com/fadhilmuhaimin/pos_universal_printer/issues)
+- Discussions: [GitHub Discussions](https://github.com/fadhilmuhaimin/pos_universal_printer/discussions)
+- Package: [pub.dev](https://pub.dev/packages/pos_universal_printer)
+- Migration Help: Tag your issues with `blue_thermal_printer migration` for priority support
 
 **Migrating from blue_thermal_printer?** We're here to help! Open an issue with your migration questions.
 - 1.0.0 once core protocols + compat considered stable in production

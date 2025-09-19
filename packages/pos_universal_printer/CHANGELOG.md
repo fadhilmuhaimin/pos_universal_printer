@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.8
+
+### Fixes and reliability
+- Stronger Bluetooth disconnect: always call native disconnect and disable auto-reconnect on manual disconnect.
+- Accurate state after hot reload: adopt existing native Bluetooth socket instead of reconnecting; add targeted disconnect by MAC address.
+- Event streaming + periodic resync integration refined to prevent ghost connections.
+
+### Example and docs
+- Example auto-scans bonded devices on launch and restores selections with SharedPreferences.
+- Simplified README code samples and pointed to the example app for full implementation details.
+
 ## 0.2.7
 
 ### 🆕 Advanced Sticker Customization

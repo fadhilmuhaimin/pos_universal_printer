@@ -154,11 +154,11 @@ await PosUniversalPrinter.instance.registerDevice(
   ),
 );
 
-compat.printCustom('TOKO MAJU JAYA', Size.boldLarge.val, Align.center.val);
-compat.printCustom('Jl. Contoh No.1', Size.medium.val, Align.center.val);
-compat.printLeftRight('Kasir:', 'Andi', Size.bold.val);
-compat.printLeftRight('Total', '58.300', Size.boldLarge.val);
-compat.printCustom('Terima Kasih :)', Size.bold.val, Align.center.val);
+compat.printCustom('DEMO STORE', Size.boldLarge.val, Align.center.val);
+compat.printCustom('123 Sample St', Size.medium.val, Align.center.val);
+compat.printLeftRight('Cashier:', 'Alex', Size.bold.val);
+compat.printLeftRight('Total', '458.30', Size.boldLarge.val);
+compat.printCustom('Thank You :)', Size.bold.val, Align.center.val);
 compat.paperCut();
 ```
 
@@ -170,12 +170,12 @@ await compat.printLogoAndLines(
   logoThreshold: 170,        // tune 120–210 (higher = darker)
   preferBitImage: true,      // legacy ESC * path first (better for older models)
   lines: [
-    CompatLine('TOKO DEMO', Size.boldLarge.val, Align.center.val),
-    CompatLine('Jl. Contoh No.1', Size.medium.val, Align.center.val),
+    CompatLine('DEMO STORE', Size.boldLarge.val, Align.center.val),
+    CompatLine('123 Sample St', Size.medium.val, Align.center.val),
     CompatLine('', Size.normal.val, Align.left.val),
-    CompatLine('Kasir: Andi', Size.bold.val, Align.left.val),
-    CompatLine('Total: Rp 58.300', Size.boldLarge.val, Align.left.val),
-    CompatLine('Terima Kasih :)', Size.bold.val, Align.center.val),
+    CompatLine('Cashier: Alex', Size.bold.val, Align.left.val),
+    CompatLine('Total: $58.30', Size.boldLarge.val, Align.left.val),
+    CompatLine('Thank You :)', Size.bold.val, Align.center.val),
   ],
 );
 compat.paperCut();
@@ -219,11 +219,11 @@ await pos.registerDevice(PosPrinterRole.kitchen, selected);
 ### 2) Print Custom Sticker Labels (TSPL)
 
 ```dart
-// Template siap pakai - paling mudah!
+// Ready-to-use template - easiest!
 CustomStickerPrinter.printProductSticker40x30(
   printer: pos,
   role: PosPrinterRole.sticker,
-  productName: 'KOPI ARABICA',
+  productName: 'ARABICA COFFEE',
   productCode: 'KA001',
   price: 'Rp 35.000',
   barcodeData: '1234567890',
@@ -233,19 +233,19 @@ CustomStickerPrinter.printProductSticker40x30(
 CustomStickerPrinter.printSticker(
   printer: pos,
   role: PosPrinterRole.sticker,
-  width: 40,    // mm - sesuai media fisik!
-  height: 30,   // mm - sesuai media fisik!
+  width: 40,    // mm - match your physical media
+  height: 30,   // mm - match your physical media
   texts: [
-    StickerText('JUDUL BESAR', x: 0, y: 0, font: 3),
+  StickerText('BIG TITLE', x: 0, y: 0, font: 3),
     StickerText('Detail info', x: 0, y: 8, font: 2),
   ],
   barcode: StickerBarcode('123456', x: 0, y: 16, height: 8),
 );
 ```
 
-**📖 Dokumentasi lengkap custom sticker:** [CUSTOM_STICKER_API.md](CUSTOM_STICKER_API.md)
+**📖 Full custom sticker documentation:** [CUSTOM_STICKER_API.md](CUSTOM_STICKER_API.md)
 
-**🔧 Troubleshooting text terbalik:** [PRINT_ORIENTATION_FIX.md](PRINT_ORIENTATION_FIX.md)
+**🔧 Troubleshooting upside-down text:** [PRINT_ORIENTATION_FIX.md](PRINT_ORIENTATION_FIX.md)
 
 ### 3) Print ESC/POS Receipt (Builder)
 
@@ -429,8 +429,8 @@ CustomStickerPrinter.printInvoice(
   printer: PosUniversalPrinter.instance,
   role: PosPrinterRole.sticker,
   customer: 'John Doe',
-  menu: 'Nasi Goreng Spesial',
-  details: 'Extra Pedas, Tanpa Bawang',
+  menu: 'Special Fried Rice',
+  details: 'Extra Spicy, No Onions',
 );
 ```
 
@@ -442,8 +442,8 @@ CustomStickerPrinter.printRestaurantOrder(
   role: PosPrinterRole.sticker,
   customerName: 'Budi',
   menuItems: [
-   MenuItem('Kopi Gula Aren', ['Less Sugar'], 'Saus Terpisah'),
-   MenuItem('Es Teh Manis', ['Gelas Besar'], 'Banyak es'),
+  MenuItem('Brown Sugar Coffee', ['Less Sugar'], 'Sauce on the side'),
+  MenuItem('Iced Sweet Tea', ['Large Cup'], 'Extra Ice'),
   ],
 );
 ```

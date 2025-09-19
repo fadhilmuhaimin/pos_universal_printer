@@ -85,7 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
     const int bottomMargin = 0;
 
     // 3) Area dalam (dot)
-    final int widthDots = widthMm * dotsPerMm;   // 320
+    final int widthDots = widthMm * dotsPerMm; // 320
     final int heightDots = heightMm * dotsPerMm; // 240
     final int innerWidth = widthDots - leftMargin - rightMargin;
     final int innerHeight = heightDots - topMargin - bottomMargin;
@@ -101,7 +101,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final sb = StringBuffer();
     sb.writeln('SIZE $widthMm mm, $heightMm mm');
     sb.writeln('GAP 3 mm, 0 mm'); // sesuaikan 2–4 mm + kalibrasi media
-    sb.writeln('DIRECTION 1');    // ikuti orientasi Label 58x40
+    sb.writeln('DIRECTION 1'); // ikuti orientasi Label 58x40
     sb.writeln('REFERENCE $leftMargin,$topMargin');
     sb.writeln('SPEED 2');
     sb.writeln('DENSITY 12');

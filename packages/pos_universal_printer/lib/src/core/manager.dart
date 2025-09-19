@@ -13,6 +13,7 @@ class DeviceConnection {
   final PrinterDevice device;
   TcpClient? tcpClient;
   bool bluetoothConnected = false;
+  bool autoReconnect = true;
 }
 
 /// Manages multiple printer connections keyed by [PosPrinterRole]. Wraps
@@ -24,6 +25,176 @@ class PosPrinterManager {
   final Logger logger;
   final JobQueue jobQueue;
   final Map<PosPrinterRole, DeviceConnection> _connections = {};
+  final StreamController<ConnectionEvent> _connectionController =
+      StreamController<ConnectionEvent>.broadcast();
+  StreamSubscription<dynamic>? _eventSub;
+  Timer? _pollTimer;
+
+  /// Emits connection state changes across all roles.
+  Stream<ConnectionEvent> get connectionEvents => _connectionController.stream;
+
+  /// Enables/disables auto-reconnect for [role].
+  void setAutoReconnect(PosPrinterRole role, bool enabled) {
+    final conn = _connections[role];
+    if (conn != null) conn.autoReconnect = enabled;
+  }
+
+  /// Start listening to native event channel and start a polling fallback.
+  void ensureEventListening(EventChannel events) {
+    _eventSub ??= events.receiveBroadcastStream().listen((dynamic e) {
+      try {
+        final map = Map<Object?, Object?>.from(e as Map);
+        final type = map['type'] as String?;
+        final event = map['event'] as String?;
+        final address = map['address'] as String?;
+        if (type == 'bluetooth' && address != null) {
+          _handleBluetoothEvent(address, event);
+        }
+      } catch (_) {
+        // ignore malformed
+      }
+    });
+    _pollTimer ??= Timer.periodic(const Duration(seconds: 10), (_) async {
+      await _pollConnections();
+    });
+  }
+
+  void _handleBluetoothEvent(String address, String? event) {
+    MapEntry<PosPrinterRole, DeviceConnection>? entry;
+    for (final e in _connections.entries) {
+      if (e.value.device.address == address) {
+        entry = e;
+        break;
+      }
+    }
+    if (entry == null) return;
+    final role = entry.key;
+    final conn = entry.value;
+    if (event == 'connected') {
+      conn.bluetoothConnected = true;
+      _connectionController.add(ConnectionEvent(
+          role: role,
+          kind: ConnectionKind.bluetooth,
+          address: address,
+          status: ConnectionStatus.connected));
+    } else if (event == 'disconnecting') {
+      _connectionController.add(ConnectionEvent(
+          role: role,
+          kind: ConnectionKind.bluetooth,
+          address: address,
+          status: ConnectionStatus.disconnecting));
+    } else if (event == 'disconnected') {
+      final wasConnected = conn.bluetoothConnected;
+      conn.bluetoothConnected = false;
+      _connectionController.add(ConnectionEvent(
+          role: role,
+          kind: ConnectionKind.bluetooth,
+          address: address,
+          status: ConnectionStatus.disconnected));
+      if (wasConnected && conn.autoReconnect) {
+        _attemptBluetoothReconnect(conn, role);
+      }
+    }
+  }
+
+  /// Queries native for any still-open Bluetooth sockets and reconciles
+  /// internal state (useful after hot reload when Dart state resets).
+  Future<void> resyncConnections() async {
+    List<dynamic> addrs = const [];
+    try {
+      final res =
+          await _channel.invokeMethod<List<dynamic>>('listConnectedBluetooth');
+      addrs = res ?? const [];
+    } catch (_) {
+      // ignore
+    }
+    final connectedSet = addrs.map((e) => e.toString()).toSet();
+    for (final entry in _connections.entries) {
+      final role = entry.key;
+      final conn = entry.value;
+      if (conn.device.type == PrinterType.bluetooth &&
+          conn.device.address != null) {
+        final addr = conn.device.address!;
+        final isNowConnected = connectedSet.contains(addr);
+        if (conn.bluetoothConnected != isNowConnected) {
+          conn.bluetoothConnected = isNowConnected;
+          _connectionController.add(ConnectionEvent(
+              role: role,
+              kind: ConnectionKind.bluetooth,
+              address: addr,
+              status: isNowConnected
+                  ? ConnectionStatus.connected
+                  : ConnectionStatus.disconnected));
+        }
+      }
+    }
+  }
+
+  Future<void> _pollConnections() async {
+    for (final entry in _connections.entries) {
+      final role = entry.key;
+      final conn = entry.value;
+      if (conn.device.type == PrinterType.bluetooth &&
+          conn.device.address != null) {
+        try {
+          final ok = await _channel.invokeMethod<bool>('isBluetoothConnected', {
+                'address': conn.device.address,
+              }) ??
+              false;
+          if (ok != conn.bluetoothConnected) {
+            conn.bluetoothConnected = ok;
+            _connectionController.add(ConnectionEvent(
+                role: role,
+                kind: ConnectionKind.bluetooth,
+                address: conn.device.address,
+                status: ok
+                    ? ConnectionStatus.connected
+                    : ConnectionStatus.disconnected));
+            if (!ok && conn.autoReconnect) {
+              _attemptBluetoothReconnect(conn, role);
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+  }
+
+  Future<void> _attemptBluetoothReconnect(
+      DeviceConnection conn, PosPrinterRole role) async {
+    int attempt = 0;
+    while (attempt < 3) {
+      // Abort if user has removed/unregistered this role or disabled auto-reconnect
+      final current = _connections[role];
+      if (current != conn || !conn.autoReconnect) {
+        logger.add(LogLevel.debug,
+            'Auto-reconnect aborted for role ' + role.toString());
+        return;
+      }
+      attempt++;
+      try {
+        logger.add(LogLevel.info,
+            'Auto-reconnect Bluetooth (${conn.device.address}) attempt $attempt');
+        final ok = await _channel.invokeMethod<bool>('connectBluetooth', {
+              'address': conn.device.address,
+            }) ??
+            false;
+        conn.bluetoothConnected = ok;
+        if (ok) {
+          _connectionController.add(ConnectionEvent(
+              role: role,
+              kind: ConnectionKind.bluetooth,
+              address: conn.device.address,
+              status: ConnectionStatus.connected));
+          return;
+        }
+      } catch (e) {
+        logger.add(LogLevel.error, 'Bluetooth auto-reconnect error: $e');
+      }
+      await Future.delayed(Duration(milliseconds: 500 * (1 << (attempt - 1))));
+    }
+  }
 
   /// Associates a [device] with a [role] and establishes the connection.
   Future<void> setDevice(PosPrinterRole role, PrinterDevice device) async {
@@ -32,19 +203,47 @@ class PosPrinterManager {
     final conn = DeviceConnection(device);
     _connections[role] = conn;
     if (device.type == PrinterType.tcp) {
-      final tcp = TcpClient(device.address!, device.port!, logger);
+      final tcp = TcpClient(
+        device.address!,
+        device.port!,
+        logger,
+        onConnectionChanged: (connected) {
+          _connectionController.add(ConnectionEvent(
+            role: role,
+            kind: ConnectionKind.tcp,
+            address: '${device.address}:${device.port}',
+            status: connected
+                ? ConnectionStatus.connected
+                : ConnectionStatus.disconnected,
+          ));
+        },
+      );
       await tcp.connect();
       conn.tcpClient = tcp;
     } else if (device.type == PrinterType.bluetooth) {
       try {
-        final bool ok = await _channel.invokeMethod<bool>('connectBluetooth', {
-              'address': device.address,
-            }) ??
-            false;
+        // If native already has an open socket (e.g., after hot reload), adopt it instead of reconnecting.
+        final bool already =
+            await _channel.invokeMethod<bool>('isBluetoothConnected', {
+                  'address': device.address,
+                }) ??
+                false;
+        bool ok = already;
+        if (!already) {
+          ok = await _channel.invokeMethod<bool>('connectBluetooth', {
+                'address': device.address,
+              }) ??
+              false;
+        }
         conn.bluetoothConnected = ok;
         if (ok) {
           logger.add(LogLevel.info,
               'Connected Bluetooth printer ${device.name} (${device.address})');
+          _connectionController.add(ConnectionEvent(
+              role: role,
+              kind: ConnectionKind.bluetooth,
+              address: device.address,
+              status: ConnectionStatus.connected));
         } else {
           logger.add(LogLevel.error,
               'Failed to connect Bluetooth printer ${device.name}');
@@ -60,17 +259,31 @@ class PosPrinterManager {
   Future<void> removeDevice(PosPrinterRole role) async {
     final conn = _connections.remove(role);
     if (conn == null) return;
+    // Ensure no further auto-reconnect attempts for this connection
+    conn.autoReconnect = false;
     if (conn.tcpClient != null) {
       await conn.tcpClient!.close();
     }
-    if (conn.bluetoothConnected) {
+    // Always ask native to disconnect the socket for Bluetooth, regardless of our cached flag.
+    if (conn.device.type == PrinterType.bluetooth &&
+        conn.device.address != null) {
       try {
+        logger.add(
+            LogLevel.info,
+            'Disconnecting Bluetooth ${conn.device.address} for role ' +
+                role.toString());
         await _channel.invokeMethod('disconnectBluetooth', {
           'address': conn.device.address,
         });
       } catch (e) {
-        // ignore
+        logger.add(LogLevel.warning,
+            'Error invoking disconnectBluetooth: ' + e.toString());
       }
+      _connectionController.add(ConnectionEvent(
+          role: role,
+          kind: ConnectionKind.bluetooth,
+          address: conn.device.address,
+          status: ConnectionStatus.disconnected));
     }
   }
 
@@ -191,5 +404,65 @@ class PosPrinterManager {
     for (final role in roles) {
       await removeDevice(role);
     }
+    await _eventSub?.cancel();
+    _eventSub = null;
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    await _connectionController.close();
   }
+
+  /// Returns a snapshot of registered devices per role.
+  Map<PosPrinterRole, PrinterDevice> get registeredDevices {
+    final map = <PosPrinterRole, PrinterDevice>{};
+    for (final e in _connections.entries) {
+      map[e.key] = e.value.device;
+    }
+    return map;
+  }
+
+  /// Returns whether the device for [role] is currently connected.
+  bool isRoleConnected(PosPrinterRole role) {
+    final conn = _connections[role];
+    if (conn == null) return false;
+    if (conn.device.type == PrinterType.tcp) {
+      // If a TcpClient exists, consider it connected when socket is not null.
+      // TcpClient doesn't expose socket directly; rely on last published event cache.
+      // For simplicity, infer via throughput>0 or assume connect() succeeded.
+      // Better: maintain explicit flag if needed. Here we treat non-null client as connected.
+      return conn.tcpClient != null;
+    } else {
+      return conn.bluetoothConnected;
+    }
+  }
+}
+
+/// Public connection event model.
+enum ConnectionKind { bluetooth, tcp }
+
+enum ConnectionStatus { connected, disconnecting, disconnected }
+
+class ConnectionEvent {
+  ConnectionEvent({
+    required this.role,
+    required this.kind,
+    required this.status,
+    this.address,
+  });
+
+  final PosPrinterRole role;
+  final ConnectionKind kind;
+  final ConnectionStatus status;
+  final String? address;
+
+  @override
+  String toString() =>
+      'ConnectionEvent(role: ' +
+      role.toString() +
+      ', kind: ' +
+      kind.toString() +
+      ', status: ' +
+      status.toString() +
+      ', address: ' +
+      (address ?? '') +
+      ')';
 }

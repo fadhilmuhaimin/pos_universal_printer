@@ -269,6 +269,7 @@ class CustomStickerPrinter {
       referenceYAdjustMm: 0.0,
     );
   }
+
   /// Mencetak sticker dengan layout yang dapat dikustomisasi
   ///
   /// Method ini adalah "canvas" utama untuk membuat sticker. Anda dapat
@@ -421,10 +422,9 @@ class CustomStickerPrinter {
     sb.writeln('GAP $gap mm, 0 mm');
     sb.writeln('DIRECTION $direction');
     // no OFFSET usage by default; keep behavior stable across firmwares
-  final refYmm = (marginTop + referenceYAdjustMm);
-  final refYdots = (refYmm < 0 ? 0 : (refYmm * dotsPerMm)).round();
-  sb.writeln(
-    'REFERENCE ${(marginLeft * dotsPerMm).round()},$refYdots');
+    final refYmm = (marginTop + referenceYAdjustMm);
+    final refYdots = (refYmm < 0 ? 0 : (refYmm * dotsPerMm)).round();
+    sb.writeln('REFERENCE ${(marginLeft * dotsPerMm).round()},$refYdots');
     sb.writeln('SPEED $speed');
     sb.writeln('DENSITY $density');
 
@@ -459,7 +459,7 @@ class CustomStickerPrinter {
       }
 
       final xDots = (finalX * dotsPerMm).round();
-  final yDots = ((text.y + yAdjustMm) * dotsPerMm).round();
+      final yDots = ((text.y + yAdjustMm) * dotsPerMm).round();
       // Hardware bold if available, else emulate with overstrike
       if (!emulateBold) {
         // Map ketebalan ke SETBOLD level (0=normal, 1=semi, 2=bold)
@@ -853,7 +853,7 @@ class CustomStickerPrinter {
     // Add texts
     for (final text in texts) {
       double actualX = text.x + marginLeft;
-  double actualY = text.y + marginTop + yAdjustMm;
+      double actualY = text.y + marginTop + yAdjustMm;
 
       // Handle alignment
       if (text.alignment == 'center') {
@@ -874,20 +874,25 @@ class CustomStickerPrinter {
           StickerWeight.bold => 2,
         };
         tspl.setBold(boldLevel);
-        tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size, text.text);
+        tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size,
+            text.text);
       } else {
         // Software bold: disable hardware bold and overstrike
         tspl.setBold(0);
-        tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size, text.text);
+        tspl.text(xDots, yDots, text.font, text.rotation, text.size, text.size,
+            text.text);
         switch (text.weight) {
           case StickerWeight.normal:
             break;
           case StickerWeight.semiBold:
-            tspl.text(xDots + 1, yDots, text.font, text.rotation, text.size, text.size, text.text);
+            tspl.text(xDots + 1, yDots, text.font, text.rotation, text.size,
+                text.size, text.text);
             break;
           case StickerWeight.bold:
-            tspl.text(xDots + 1, yDots, text.font, text.rotation, text.size, text.size, text.text);
-            tspl.text(xDots, yDots + 1, text.font, text.rotation, text.size, text.size, text.text);
+            tspl.text(xDots + 1, yDots, text.font, text.rotation, text.size,
+                text.size, text.text);
+            tspl.text(xDots, yDots + 1, text.font, text.rotation, text.size,
+                text.size, text.text);
             break;
         }
       }
@@ -908,8 +913,8 @@ class CustomStickerPrinter {
       }
     }
 
-  tspl.setBold(0);
-  tspl.printLabel(1);
+    tspl.setBold(0);
+    tspl.printLabel(1);
 
     return String.fromCharCodes(tspl.build());
   }

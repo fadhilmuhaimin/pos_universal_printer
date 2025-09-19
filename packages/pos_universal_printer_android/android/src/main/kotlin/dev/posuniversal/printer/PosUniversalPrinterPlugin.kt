@@ -7,6 +7,12 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.EventChannel
+import android.content.Intent
+import android.content.IntentFilter
+import android.bluetooth.BluetoothDevice
+import android.content.BroadcastReceiver
+import android.util.Log
 
 /**
  * Flutter plugin implementation for Android. Exposes methods over
@@ -15,17 +21,22 @@ import io.flutter.plugin.common.MethodChannel.Result
  * methods are included for completeness but the Dart side also
  * implements its own client.
  */
-class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler {
+class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel.StreamHandler {
     private lateinit var channel: MethodChannel
+    private lateinit var eventChannel: EventChannel
     private lateinit var context: Context
     private lateinit var bluetoothController: BluetoothController
     private val tcpClient = TcpSocketClient()
+    private var receiverRegistered: Boolean = false
+    private var events: EventChannel.EventSink? = null
 
     override fun onAttachedToEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
         bluetoothController = BluetoothController(context)
         channel = MethodChannel(binding.binaryMessenger, "pos_universal_printer")
         channel.setMethodCallHandler(this)
+        eventChannel = EventChannel(binding.binaryMessenger, "pos_universal_printer/events")
+        eventChannel.setStreamHandler(this)
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -49,6 +60,14 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler {
                 }
                 bluetoothController.disconnect(address)
                 result.success(true)
+            }
+            "isBluetoothConnected" -> {
+                val address = call.argument<String>("address") ?: run {
+                    result.error("BT_IS_CONNECTED", "Address missing", null)
+                    return
+                }
+                val ok = bluetoothController.isConnected(address)
+                result.success(ok)
             }
             "writeBluetooth" -> {
                 val address = call.argument<String>("address") ?: run {
@@ -78,6 +97,13 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler {
                 }
                 val ok = bluetoothController.write(address, bytes)
                 result.success(ok)
+            }
+            "listConnectedBluetooth" -> {
+                result.success(bluetoothController.listConnected())
+            }
+            "disconnectAllBluetooth" -> {
+                bluetoothController.disconnectAll()
+                result.success(true)
             }
             // TCP support: connect, write, disconnect
             "connectTcp" -> {
@@ -133,5 +159,58 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler {
 
     override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         channel.setMethodCallHandler(null)
+        if (receiverRegistered) {
+            try {
+                context.unregisterReceiver(aclReceiver)
+            } catch (e: Exception) {
+                Log.w("PosPrinterPlugin", "Receiver unregister failed", e)
+            }
+            receiverRegistered = false
+        }
+    }
+
+    // EventChannel implementation for Bluetooth ACL connection state changes
+    override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+        this.events = events
+        if (!receiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(BluetoothDevice.ACTION_ACL_CONNECTED)
+                addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED)
+                addAction(BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED)
+            }
+            context.registerReceiver(aclReceiver, filter)
+            receiverRegistered = true
+        }
+    }
+
+    override fun onCancel(arguments: Any?) {
+        this.events = null
+        if (receiverRegistered) {
+            try {
+                context.unregisterReceiver(aclReceiver)
+            } catch (e: Exception) {
+                Log.w("PosPrinterPlugin", "Receiver unregister failed", e)
+            }
+            receiverRegistered = false
+        }
+    }
+
+    private val aclReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val action = intent?.action ?: return
+            val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+            val address = device?.address
+            when (action) {
+                BluetoothDevice.ACTION_ACL_CONNECTED -> {
+                    events?.success(mapOf("type" to "bluetooth", "event" to "connected", "address" to address))
+                }
+                BluetoothDevice.ACTION_ACL_DISCONNECT_REQUESTED -> {
+                    events?.success(mapOf("type" to "bluetooth", "event" to "disconnecting", "address" to address))
+                }
+                BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
+                    events?.success(mapOf("type" to "bluetooth", "event" to "disconnected", "address" to address))
+                }
+            }
+        }
     }
 }
