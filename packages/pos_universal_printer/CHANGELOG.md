@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.10
+
+### Federated install quality of life
+- App-facing package now declares dependencies on `pos_universal_printer_android` and `pos_universal_printer_ios` so apps can install from pub.dev without overrides.
+- Example app updated to depend on `^0.2.10`.
+
 ## 0.2.9
 
 ### Connection health & UX

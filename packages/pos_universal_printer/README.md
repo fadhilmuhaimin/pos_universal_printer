@@ -64,7 +64,7 @@ Add the package from pub.dev:
 
 ```yaml
 dependencies:
-  pos_universal_printer: ^0.2.9
+  pos_universal_printer: ^0.2.10
 ```
 
 If you are working from source or a monorepo, consider these options:
@@ -73,7 +73,7 @@ If you are working from source or a monorepo, consider these options:
 
 ```yaml
 dependencies:
-  pos_universal_printer: ^0.2.9
+  pos_universal_printer: ^0.2.10
 ```
 
 2) Git with overrides (keeps all federated packages from the same repo/ref):
