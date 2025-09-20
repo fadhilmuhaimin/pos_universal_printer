@@ -7,7 +7,7 @@ import 'src/core/manager.dart';
 import 'src/core/logging.dart';
 import 'src/protocols/escpos/builder.dart';
 import 'src/renderer/receipt_renderer.dart';
-import 'package:flutter/services.dart' show EventChannel;
+// EventChannel is already available from the full services import above
 
 // Public re-exports for builders and renderer so users don't import from src/.
 export 'src/protocols/escpos/builder.dart'
