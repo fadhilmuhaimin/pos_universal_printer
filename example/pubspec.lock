@@ -245,7 +245,7 @@ packages:
       path: "../packages/pos_universal_printer"
       relative: true
     source: path
-    version: "0.2.7"
+    version: "0.2.9"
   pos_universal_printer_android:
     dependency: "direct main"
     description:

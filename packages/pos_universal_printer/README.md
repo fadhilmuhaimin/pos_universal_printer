@@ -64,10 +64,57 @@ Add the package from pub.dev:
 
 ```yaml
 dependencies:
-  pos_universal_printer: ^0.2.8
+  pos_universal_printer: ^0.2.9
 ```
 
-For Git usage in a monorepo, see the repository README for dependency_overrides instructions.
+If you are working from source or a monorepo, consider these options:
+
+1) Pub.dev (recommended once all platform impls are published)
+
+```yaml
+dependencies:
+  pos_universal_printer: ^0.2.9
+```
+
+2) Git with overrides (keeps all federated packages from the same repo/ref):
+
+```yaml
+dependencies:
+  pos_universal_printer:
+    git:
+      url: https://github.com/fadhilmuhaimin/pos_universal_printer.git
+      path: packages/pos_universal_printer
+      ref: main  # or a tag/commit
+
+dependency_overrides:
+  pos_universal_printer_android:
+    git:
+      url: https://github.com/fadhilmuhaimin/pos_universal_printer.git
+      path: packages/pos_universal_printer_android
+      ref: main
+  pos_universal_printer_ios:
+    git:
+      url: https://github.com/fadhilmuhaimin/pos_universal_printer.git
+      path: packages/pos_universal_printer_ios
+      ref: main
+```
+
+3) Local path (monorepo development):
+
+```yaml
+dependencies:
+  pos_universal_printer:
+    path: ../pos_universal_printer/packages/pos_universal_printer
+  pos_universal_printer_android:
+    path: ../pos_universal_printer/packages/pos_universal_printer_android
+  pos_universal_printer_ios:
+    path: ../pos_universal_printer/packages/pos_universal_printer_ios
+```
+
+Troubleshooting:
+- Ensure Flutter >= 3.19.0 and Dart >= 3.2.0
+- After switching install methods, run: `flutter clean` then `flutter pub get`
+- Do not place dependencies under the `flutter:` section; only `assets`, `fonts`, etc. belong there.
 
 ## Quick start
 

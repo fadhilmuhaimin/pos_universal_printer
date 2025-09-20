@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.9
+
+### Connection health & UX
+- Example: add TCP preflight reachability check and connection wait-with-timeout.
+- Example: add a "Check Status" action and clearer failure snackbars when device is offline.
+
+### Publishing & docs
+- Prep federated platform packages for pub.dev (remove local path deps in platform packages; add proper version constraints).
+- README: clarify installation options (pub.dev, git with overrides, local path) and troubleshooting.
+
 ## 0.2.8
 
 ### Fixes and reliability

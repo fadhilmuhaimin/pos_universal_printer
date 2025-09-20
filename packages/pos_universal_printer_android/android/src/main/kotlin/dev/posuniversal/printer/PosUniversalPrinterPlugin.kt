@@ -13,6 +13,12 @@ import android.content.IntentFilter
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Flutter plugin implementation for Android. Exposes methods over
@@ -29,6 +35,7 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel
     private val tcpClient = TcpSocketClient()
     private var receiverRegistered: Boolean = false
     private var events: EventChannel.EventSink? = null
+    private val pluginScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     override fun onAttachedToEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
@@ -42,32 +49,44 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         when (call.method) {
             "scanBluetooth" -> {
-                val devices = bluetoothController.scan()
-                result.success(devices)
+                pluginScope.launch {
+                    try {
+                        val devices = bluetoothController.scan()
+                        result.success(devices)
+                    } catch (e: Throwable) {
+                        result.error("SCAN_ERROR", e.message, null)
+                    }
+                }
             }
             "connectBluetooth" -> {
                 val address = call.argument<String>("address") ?: run {
                     result.error("BT_CONNECT", "Address missing", null)
                     return
                 }
-                val ok = bluetoothController.connect(address)
-                result.success(ok)
+                pluginScope.launch {
+                    val ok = bluetoothController.connect(address)
+                    result.success(ok)
+                }
             }
             "disconnectBluetooth" -> {
                 val address = call.argument<String>("address") ?: run {
                     result.error("BT_DISCONNECT", "Address missing", null)
                     return
                 }
-                bluetoothController.disconnect(address)
-                result.success(true)
+                pluginScope.launch {
+                    bluetoothController.disconnect(address)
+                    result.success(true)
+                }
             }
             "isBluetoothConnected" -> {
                 val address = call.argument<String>("address") ?: run {
                     result.error("BT_IS_CONNECTED", "Address missing", null)
                     return
                 }
-                val ok = bluetoothController.isConnected(address)
-                result.success(ok)
+                pluginScope.launch {
+                    val ok = bluetoothController.isConnected(address)
+                    result.success(ok)
+                }
             }
             "writeBluetooth" -> {
                 val address = call.argument<String>("address") ?: run {
@@ -95,15 +114,20 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel
                         return
                     }
                 }
-                val ok = bluetoothController.write(address, bytes)
-                result.success(ok)
+                pluginScope.launch {
+                    val ok = bluetoothController.write(address, bytes)
+                    result.success(ok)
+                }
             }
             "listConnectedBluetooth" -> {
+                // listConnected() only inspects our map; safe to call directly
                 result.success(bluetoothController.listConnected())
             }
             "disconnectAllBluetooth" -> {
-                bluetoothController.disconnectAll()
-                result.success(true)
+                pluginScope.launch {
+                    bluetoothController.disconnectAll()
+                    result.success(true)
+                }
             }
             // TCP support: connect, write, disconnect
             "connectTcp" -> {
@@ -112,8 +136,10 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel
                     return
                 }
                 val port = call.argument<Int>("port") ?: 9100
-                val ok = tcpClient.connect(host, port)
-                result.success(ok)
+                pluginScope.launch {
+                    val ok = withContext(Dispatchers.IO) { tcpClient.connect(host, port) }
+                    result.success(ok)
+                }
             }
             "writeTcp" -> {
                 val host = call.argument<String>("host") ?: run {
@@ -141,8 +167,10 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel
                         return
                     }
                 }
-                val ok = tcpClient.write(host, port, bytes)
-                result.success(ok)
+                pluginScope.launch {
+                    val ok = withContext(Dispatchers.IO) { tcpClient.write(host, port, bytes) }
+                    result.success(ok)
+                }
             }
             "disconnectTcp" -> {
                 val host = call.argument<String>("host") ?: run {
@@ -150,8 +178,10 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel
                     return
                 }
                 val port = call.argument<Int>("port") ?: 9100
-                tcpClient.disconnect(host, port)
-                result.success(true)
+                pluginScope.launch {
+                    withContext(Dispatchers.IO) { tcpClient.disconnect(host, port) }
+                    result.success(true)
+                }
             }
             else -> result.notImplemented()
         }
@@ -167,6 +197,7 @@ class PosUniversalPrinterPlugin : FlutterPlugin, MethodCallHandler, EventChannel
             }
             receiverRegistered = false
         }
+        pluginScope.cancel()
     }
 
     // EventChannel implementation for Bluetooth ACL connection state changes

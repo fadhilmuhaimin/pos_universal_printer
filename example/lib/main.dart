@@ -178,6 +178,16 @@ class _MyHomePageState extends State<MyHomePage> {
       if (type == PrinterType.bluetooth) {
         String? deviceId = _selectedDeviceId[role];
         if (deviceId != null) {
+          // Info precheck: kalau tidak ada dalam hasil scan, beri peringatan ringan
+          final inScan = _bluetoothDevices.any((d) => d.id == deviceId);
+          if (!inScan && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Perhatian: Perangkat BT $deviceId tidak ada di daftar scan (mungkin mati/tidak terpasang). Coba tetap hubungkan...'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
           // Cari device dari list bluetooth devices
           device = _bluetoothDevices.firstWhere(
             (d) => d.id == deviceId,
@@ -192,6 +202,20 @@ class _MyHomePageState extends State<MyHomePage> {
       } else if (type == PrinterType.tcp) {
         final ip = _ipControllers[role]!.text;
         final port = int.tryParse(_portControllers[role]!.text) ?? 9100;
+        // Preflight ping TCP agar user cepat tahu jika printer OFFLINE
+        final reachable = await _tcpReachable(ip, port, timeout: const Duration(seconds: 1));
+        if (!reachable) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Printer TCP $ip:$port tidak dapat dijangkau (offline?).'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          // Tetap lanjut mendaftarkan device jika ingin auto-reconnect, atau batal? Pilih batal untuk UX jelas
+          return;
+        }
         device = PrinterDevice(
           id: '$ip:$port',
           name: 'TCP Printer',
@@ -221,16 +245,30 @@ class _MyHomePageState extends State<MyHomePage> {
           await prefs.remove('role_${role.name}_address');
         }
         
-        setState(() {
-          _isConnected[role] = true;
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ ${role.name} printer connected!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        // Tunggu konfirmasi koneksi dari event, dengan timeout
+        final ok = await _waitForConnection(role, timeout: const Duration(seconds: 6));
+        if (!mounted) return;
+        if (ok) {
+          setState(() {
+            _isConnected[role] = true;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ ${role.name} printer connected!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          setState(() {
+            _isConnected[role] = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Tidak bisa konek ke ${role.name} (time out / device offline).'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -293,6 +331,68 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         _isDisconnecting[role] = false;
       });
+    }
+  }
+
+  // ⏱️ Tunggu event koneksi untuk role tertentu, dengan timeout
+  Future<bool> _waitForConnection(PosPrinterRole role, {Duration timeout = const Duration(seconds: 6)}) async {
+    // Jika sudah connected, langsung true
+    if (printer.isRoleConnected(role)) return true;
+    final completer = Completer<bool>();
+    late final StreamSubscription sub;
+    Timer? timer;
+    void finish(bool value) {
+      if (!completer.isCompleted) completer.complete(value);
+      timer?.cancel();
+      sub.cancel();
+    }
+    sub = printer.connectionEvents.listen((evt) {
+      if (evt.role == role) {
+        if (evt.status == ConnectionStatus.connected) {
+          finish(true);
+        }
+      }
+    });
+    timer = Timer(timeout, () => finish(false));
+    return completer.future;
+  }
+
+  // 🌐 Cek reachability TCP cepat
+  Future<bool> _tcpReachable(String host, int port, {Duration timeout = const Duration(seconds: 1)}) async {
+    try {
+      final socket = await Socket.connect(host, port, timeout: timeout);
+      await socket.close();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // 🔎 Tombol cek status printer sekarang (ping TCP / tunggu connected)
+  Future<void> _checkPrinter(PosPrinterRole role) async {
+    final type = _selectedType[role]!;
+    if (type == PrinterType.tcp) {
+      final ip = _ipControllers[role]!.text;
+      final port = int.tryParse(_portControllers[role]!.text) ?? 9100;
+      final reachable = await _tcpReachable(ip, port, timeout: const Duration(seconds: 1));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(reachable ? '✅ TCP $ip:$port reachable' : '❌ TCP $ip:$port unreachable'),
+          backgroundColor: reachable ? Colors.green : Colors.red,
+        ),
+      );
+    } else {
+      // Bluetooth: coba trigger minimal print untuk memaksa koneksi lalu tunggu event
+      printer.printRaw(role, const [0x1B]);
+      final ok = await _waitForConnection(role, timeout: const Duration(seconds: 5));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok ? '✅ Bluetooth connected' : '❌ Bluetooth not connected (offline?)'),
+          backgroundColor: ok ? Colors.green : Colors.red,
+        ),
+      );
     }
   }
 
@@ -552,6 +652,10 @@ class _MyHomePageState extends State<MyHomePage> {
                 Wrap(
                   spacing: 8.0,
                   children: [
+                    ElevatedButton(
+                      onPressed: () => _checkPrinter(role),
+                      child: const Text('Check Status'),
+                    ),
                     ElevatedButton(
                       onPressed: () => _openDrawer(role),
                       child: const Text('Open Drawer'),

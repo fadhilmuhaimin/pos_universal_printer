@@ -4,6 +4,8 @@ import android.util.Log
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.Socket
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Simple TCP client for printers. Manages multiple sockets keyed by
@@ -18,10 +20,10 @@ class TcpSocketClient {
     private fun key(host: String, port: Int) = "$host:$port"
 
     /** Connects to [host]:[port] and returns true on success. */
-    fun connect(host: String, port: Int): Boolean {
+    suspend fun connect(host: String, port: Int): Boolean = withContext(Dispatchers.IO) {
         val k = key(host, port)
-        if (sockets.containsKey(k)) return true
-        return try {
+        if (sockets.containsKey(k)) return@withContext true
+        return@withContext try {
             val socket = Socket()
             socket.connect(InetSocketAddress(host, port), 5000)
             sockets[k] = socket
@@ -33,10 +35,10 @@ class TcpSocketClient {
     }
 
     /** Writes [bytes] to the connected socket for [host]:[port]. */
-    fun write(host: String, port: Int, bytes: ByteArray): Boolean {
+    suspend fun write(host: String, port: Int, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
         val k = key(host, port)
-        val socket = sockets[k] ?: return false
-        return try {
+        val socket = sockets[k] ?: return@withContext false
+        return@withContext try {
             val out = socket.getOutputStream()
             out.write(bytes)
             out.flush()
@@ -48,7 +50,7 @@ class TcpSocketClient {
     }
 
     /** Disconnects from [host]:[port]. */
-    fun disconnect(host: String, port: Int) {
+    suspend fun disconnect(host: String, port: Int) = withContext(Dispatchers.IO) {
         val k = key(host, port)
         try {
             sockets[k]?.close()

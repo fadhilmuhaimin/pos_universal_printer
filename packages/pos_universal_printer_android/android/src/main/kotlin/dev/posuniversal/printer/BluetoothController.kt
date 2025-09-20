@@ -5,6 +5,8 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.UUID
 
@@ -23,9 +25,9 @@ class BluetoothController(private val context: Context) {
      * Returns a list of bonded (paired) devices. Each device is
      * represented as a map with keys `name` and `address`.
      */
-    fun scan(): List<Map<String, String?>> {
+    suspend fun scan(): List<Map<String, String?>> = withContext(Dispatchers.IO) {
         val result = mutableListOf<Map<String, String?>>()
-        val btAdapter = adapter ?: return result
+        val btAdapter = adapter ?: return@withContext result
         val bonded: Set<BluetoothDevice> = btAdapter.bondedDevices
         for (device in bonded) {
             val map = mapOf(
@@ -34,18 +36,19 @@ class BluetoothController(private val context: Context) {
             )
             result.add(map)
         }
-        return result
+        return@withContext result
     }
 
     /**
      * Attempts to connect to a device with the given MAC [address].
      * Returns true if the connection succeeds.
      */
-    fun connect(address: String): Boolean {
-        val btAdapter = adapter ?: return false
-        val device = btAdapter.getRemoteDevice(address) ?: return false
-        return try {
+    suspend fun connect(address: String): Boolean = withContext(Dispatchers.IO) {
+        val btAdapter = adapter ?: return@withContext false
+        val device = btAdapter.getRemoteDevice(address) ?: return@withContext false
+        return@withContext try {
             val socket = device.createRfcommSocketToServiceRecord(uuid)
+            @Suppress("MissingPermission")
             btAdapter.cancelDiscovery()
             socket.connect()
             sockets[address] = socket
@@ -59,7 +62,7 @@ class BluetoothController(private val context: Context) {
     /**
      * Disconnects from the device with the given MAC [address].
      */
-    fun disconnect(address: String) {
+    suspend fun disconnect(address: String) = withContext(Dispatchers.IO) {
         try {
             sockets[address]?.close()
         } catch (e: IOException) {
@@ -74,9 +77,9 @@ class BluetoothController(private val context: Context) {
      * device is out of range until the next IO failure. Use in combination
      * with ACL broadcast events for reliability.
      */
-    fun isConnected(address: String): Boolean {
-        val socket = sockets[address] ?: return false
-        return try {
+    suspend fun isConnected(address: String): Boolean = withContext(Dispatchers.IO) {
+        val socket = sockets[address] ?: return@withContext false
+        return@withContext try {
             socket.isConnected
         } catch (e: Exception) {
             false
@@ -87,9 +90,9 @@ class BluetoothController(private val context: Context) {
      * Sends [bytes] to the connected device identified by [address].
      * Returns true on success.
      */
-    fun write(address: String, bytes: ByteArray): Boolean {
-        val socket = sockets[address] ?: return false
-        return try {
+    suspend fun write(address: String, bytes: ByteArray): Boolean = withContext(Dispatchers.IO) {
+        val socket = sockets[address] ?: return@withContext false
+        return@withContext try {
             val out = socket.outputStream
             out.write(bytes)
             out.flush()
@@ -106,7 +109,7 @@ class BluetoothController(private val context: Context) {
     }
 
     /** Disconnects all tracked sockets. */
-    fun disconnectAll() {
+    suspend fun disconnectAll() = withContext(Dispatchers.IO) {
         val keys = sockets.keys.toList()
         for (addr in keys) {
             disconnect(addr)

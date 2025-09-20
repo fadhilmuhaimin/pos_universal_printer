@@ -9,12 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  pos_universal_printer:
-    path: ../packages/pos_universal_printer
-  pos_universal_printer_android:
-    path: ../packages/pos_universal_printer_android
-  pos_universal_printer_ios:
-    path: ../packages/pos_universal_printer_ios
+  pos_universal_printer: ^0.2.9
   permission_handler: ^11.3.1
   shared_preferences: ^2.2.3
 dev_dependencies:
@@ -22,6 +17,8 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
+
+dependency_overrides:
 
 flutter:
   uses-material-design: true
