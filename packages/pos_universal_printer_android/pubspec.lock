@@ -49,10 +49,11 @@ packages:
   pos_universal_printer:
     dependency: "direct main"
     description:
-      path: "../pos_universal_printer"
-      relative: true
-    source: path
-    version: "0.1.0"
+      name: pos_universal_printer
+      sha256: ae9fa3967c3318afd285523f51659b8da1227ffc502643cc658de946cec08b5a
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.9"
   sky_engine:
     dependency: transitive
     description: flutter
