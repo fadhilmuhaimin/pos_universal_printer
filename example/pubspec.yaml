@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  pos_universal_printer: ^0.2.9
+  pos_universal_printer: ^0.2.10
   permission_handler: ^11.3.1
   shared_preferences: ^2.2.3
 dev_dependencies:
