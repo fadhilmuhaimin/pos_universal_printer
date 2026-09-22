@@ -337,6 +337,52 @@ class BlueThermalCompatPrinter {
     _printer.printEscPos(defaultRole, b);
   }
 
+  /// Combined convenience: prints raw (e.g. downloaded network) image [bytes]
+  /// followed by a list of text lines in a SINGLE ESC/POS job (single
+  /// `init()`, single feed after the logo). Use this instead of calling
+  /// [printImageBytes] and [printLogoAndLines] back-to-back, which sends two
+  /// separate jobs (two printer resets) and shows up as extra spacing/gap
+  /// around the logo on physical printers.
+  Future<void> printImageBytesAndLines({
+    required Uint8List bytes,
+    bool preferBitImage = true,
+    int threshold = 160,
+    List<CompatLine> lines = const [],
+  }) async {
+    final b = EscPosBuilder();
+    b.init();
+    try {
+      if (preferBitImage && CompatImageUtils.looksLikeImage(bytes)) {
+        final bit = await CompatImageUtils.rawBytesToBitImage(bytes,
+            maxWidth: _lineChars == 48 ? 512 : 384, threshold: threshold);
+        if (bit.isNotEmpty) {
+          b.setAlign(PosAlign.center);
+          b.raster(bit);
+          b.feed(1);
+        }
+      } else if (CompatImageUtils.looksLikeRaster(bytes) ||
+          CompatImageUtils.looksLikeImage(bytes)) {
+        final raster = CompatImageUtils.looksLikeRaster(bytes)
+            ? bytes
+            : await CompatImageUtils.rawBytesToRaster(bytes,
+                maxWidth: _lineChars == 48 ? 512 : 384, threshold: threshold);
+        if (raster.isNotEmpty) {
+          b.setAlign(PosAlign.center);
+          b.raster(raster);
+          b.feed(1);
+        }
+      }
+    } catch (e) {
+      _printer.debugLog(LogLevel.warning, 'Compat: combined logo failed: $e');
+    }
+    // Text lines (same job, no second init/reset)
+    for (final l in lines) {
+      final bold = l.size >= Size.bold.val;
+      b.text(l.text, align: _mapAlign(l.align), bold: bold);
+    }
+    _printer.printEscPos(defaultRole, b);
+  }
+
   /// Internal record style representation of a line.
 // (moved definition to top)
   PosAlign _mapAlign(int a) {

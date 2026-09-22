@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart' hide Align; // hide Flutter Align to use compat Align enum
+import 'package:flutter/material.dart'
+    hide Align; // hide Flutter Align to use compat Align enum
 import 'package:pos_universal_printer/pos_universal_printer.dart';
 import 'demo_transaction_data.dart';
 import 'finished_transaction_compat.dart';
@@ -7,8 +8,6 @@ import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // removed unused imports
-
-
 
 void main() {
   runApp(const MyApp());
@@ -46,7 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
   Map<PosPrinterRole, TextEditingController> _ipControllers = {};
   Map<PosPrinterRole, TextEditingController> _portControllers = {};
   List<PrinterDevice> _bluetoothDevices = [];
-  
+
   // 🆕 Loading states untuk UI
   Map<PosPrinterRole, bool> _isConnecting = {};
   Map<PosPrinterRole, bool> _isDisconnecting = {};
@@ -62,7 +61,7 @@ class _MyHomePageState extends State<MyHomePage> {
       _selectedType[role] = PrinterType.bluetooth;
       _ipControllers[role] = TextEditingController(text: '192.168.1.100');
       _portControllers[role] = TextEditingController(text: '9100');
-      
+
       // 🆕 Initialize loading states
       _isConnecting[role] = false;
       _isDisconnecting[role] = false;
@@ -92,8 +91,10 @@ class _MyHomePageState extends State<MyHomePage> {
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
     ].request();
-    final scanOk = statuses[Permission.bluetoothScan] == PermissionStatus.granted;
-    final connectOk = statuses[Permission.bluetoothConnect] == PermissionStatus.granted;
+    final scanOk =
+        statuses[Permission.bluetoothScan] == PermissionStatus.granted;
+    final connectOk =
+        statuses[Permission.bluetoothConnect] == PermissionStatus.granted;
     if (!scanOk || !connectOk) {
       // Optional: surface a message; scanning/connect will guard too.
     }
@@ -148,10 +149,16 @@ class _MyHomePageState extends State<MyHomePage> {
       // try register and enable auto-reconnect
       PrinterDevice? device;
       if (type == PrinterType.bluetooth && addr != null && addr.isNotEmpty) {
-        device = PrinterDevice(id: addr, name: 'Restored BT', type: type, address: addr);
+        device = PrinterDevice(
+            id: addr, name: 'Restored BT', type: type, address: addr);
       } else if (type == PrinterType.tcp && ip != null && ip.isNotEmpty) {
         final p = port ?? 9100;
-        device = PrinterDevice(id: '$ip:$p', name: 'Restored TCP', type: type, address: ip, port: p);
+        device = PrinterDevice(
+            id: '$ip:$p',
+            name: 'Restored TCP',
+            type: type,
+            address: ip,
+            port: p);
       }
       if (device != null) {
         try {
@@ -183,7 +190,8 @@ class _MyHomePageState extends State<MyHomePage> {
           if (!inScan && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Perhatian: Perangkat BT $deviceId tidak ada di daftar scan (mungkin mati/tidak terpasang). Coba tetap hubungkan...'),
+                content: Text(
+                    'Perhatian: Perangkat BT $deviceId tidak ada di daftar scan (mungkin mati/tidak terpasang). Coba tetap hubungkan...'),
                 backgroundColor: Colors.orange,
               ),
             );
@@ -203,12 +211,14 @@ class _MyHomePageState extends State<MyHomePage> {
         final ip = _ipControllers[role]!.text;
         final port = int.tryParse(_portControllers[role]!.text) ?? 9100;
         // Preflight ping TCP agar user cepat tahu jika printer OFFLINE
-        final reachable = await _tcpReachable(ip, port, timeout: const Duration(seconds: 1));
+        final reachable =
+            await _tcpReachable(ip, port, timeout: const Duration(seconds: 1));
         if (!reachable) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Printer TCP $ip:$port tidak dapat dijangkau (offline?).'),
+                content: Text(
+                    'Printer TCP $ip:$port tidak dapat dijangkau (offline?).'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -234,7 +244,8 @@ class _MyHomePageState extends State<MyHomePage> {
         await prefs.setString('role_${role.name}_type',
             device.type == PrinterType.tcp ? 'tcp' : 'bluetooth');
         if (device.type == PrinterType.bluetooth) {
-          await prefs.setString('role_${role.name}_address', device.address ?? device.id);
+          await prefs.setString(
+              'role_${role.name}_address', device.address ?? device.id);
           await prefs.remove('role_${role.name}_ip');
           await prefs.remove('role_${role.name}_port');
         } else {
@@ -244,9 +255,10 @@ class _MyHomePageState extends State<MyHomePage> {
           await prefs.setInt('role_${role.name}_port', device.port ?? 9100);
           await prefs.remove('role_${role.name}_address');
         }
-        
+
         // Tunggu konfirmasi koneksi dari event, dengan timeout
-        final ok = await _waitForConnection(role, timeout: const Duration(seconds: 6));
+        final ok =
+            await _waitForConnection(role, timeout: const Duration(seconds: 6));
         if (!mounted) return;
         if (ok) {
           setState(() {
@@ -264,7 +276,8 @@ class _MyHomePageState extends State<MyHomePage> {
           });
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('❌ Tidak bisa konek ke ${role.name} (time out / device offline).'),
+              content: Text(
+                  '❌ Tidak bisa konek ke ${role.name} (time out / device offline).'),
               backgroundColor: Colors.red,
             ),
           );
@@ -304,11 +317,11 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       await printer.resyncConnections();
       await printer.resyncConnections();
-  // Clear persisted selection for this role (only state, keep type)
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.remove('role_${role.name}_address');
-  await prefs.remove('role_${role.name}_ip');
-  await prefs.remove('role_${role.name}_port');
+      // Clear persisted selection for this role (only state, keep type)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('role_${role.name}_address');
+      await prefs.remove('role_${role.name}_ip');
+      await prefs.remove('role_${role.name}_port');
 
       setState(() {
         _isConnected[role] = false;
@@ -335,7 +348,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // ⏱️ Tunggu event koneksi untuk role tertentu, dengan timeout
-  Future<bool> _waitForConnection(PosPrinterRole role, {Duration timeout = const Duration(seconds: 6)}) async {
+  Future<bool> _waitForConnection(PosPrinterRole role,
+      {Duration timeout = const Duration(seconds: 6)}) async {
     // Jika sudah connected, langsung true
     if (printer.isRoleConnected(role)) return true;
     final completer = Completer<bool>();
@@ -346,6 +360,7 @@ class _MyHomePageState extends State<MyHomePage> {
       timer?.cancel();
       sub.cancel();
     }
+
     sub = printer.connectionEvents.listen((evt) {
       if (evt.role == role) {
         if (evt.status == ConnectionStatus.connected) {
@@ -358,7 +373,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   // 🌐 Cek reachability TCP cepat
-  Future<bool> _tcpReachable(String host, int port, {Duration timeout = const Duration(seconds: 1)}) async {
+  Future<bool> _tcpReachable(String host, int port,
+      {Duration timeout = const Duration(seconds: 1)}) async {
     try {
       final socket = await Socket.connect(host, port, timeout: timeout);
       await socket.close();
@@ -374,22 +390,28 @@ class _MyHomePageState extends State<MyHomePage> {
     if (type == PrinterType.tcp) {
       final ip = _ipControllers[role]!.text;
       final port = int.tryParse(_portControllers[role]!.text) ?? 9100;
-      final reachable = await _tcpReachable(ip, port, timeout: const Duration(seconds: 1));
+      final reachable =
+          await _tcpReachable(ip, port, timeout: const Duration(seconds: 1));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(reachable ? '✅ TCP $ip:$port reachable' : '❌ TCP $ip:$port unreachable'),
+          content: Text(reachable
+              ? '✅ TCP $ip:$port reachable'
+              : '❌ TCP $ip:$port unreachable'),
           backgroundColor: reachable ? Colors.green : Colors.red,
         ),
       );
     } else {
       // Bluetooth: coba trigger minimal print untuk memaksa koneksi lalu tunggu event
       printer.printRaw(role, const [0x1B]);
-      final ok = await _waitForConnection(role, timeout: const Duration(seconds: 5));
+      final ok =
+          await _waitForConnection(role, timeout: const Duration(seconds: 5));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(ok ? '✅ Bluetooth connected' : '❌ Bluetooth not connected (offline?)'),
+          content: Text(ok
+              ? '✅ Bluetooth connected'
+              : '❌ Bluetooth not connected (offline?)'),
           backgroundColor: ok ? Colors.green : Colors.red,
         ),
       );
@@ -410,14 +432,17 @@ class _MyHomePageState extends State<MyHomePage> {
           Permission.bluetoothScan,
           Permission.bluetoothConnect,
         ].request();
-        final scanOk = statuses[Permission.bluetoothScan] == PermissionStatus.granted;
-        final connectOk = statuses[Permission.bluetoothConnect] == PermissionStatus.granted;
+        final scanOk =
+            statuses[Permission.bluetoothScan] == PermissionStatus.granted;
+        final connectOk =
+            statuses[Permission.bluetoothConnect] == PermissionStatus.granted;
         if (!scanOk || !connectOk) {
           if (!mounted) return;
           setState(() => _isScanning = false);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Permissions required: enable Bluetooth Scan & Connect'),
+              content:
+                  Text('Permissions required: enable Bluetooth Scan & Connect'),
               backgroundColor: Colors.orange,
             ),
           );
@@ -448,9 +473,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-
-
-
   void _openDrawer(PosPrinterRole role) {
     printer.openDrawer(role);
   }
@@ -478,12 +500,17 @@ class _MyHomePageState extends State<MyHomePage> {
     final tx = sample56mmTransaction();
     final compatPrinter = FinishedTransactionCompatPrinter(
       is80mm: false,
-      logoAssetPath: 'assets/images/akib.png', // print this logo at top
+      logoAssetPath:
+          'assets/images/logorappokopi.png', // print this logo at top
+      logoNetworkUrl:
+          'https://www.prod.ak-solutions.id//storage/129/logoinstitutkopi.png',
     );
     // Ensure the compat facade targets the currently selected role/device
     if (_isConnected[role] != true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Printer not connected for this role'), backgroundColor: Colors.red),
+        const SnackBar(
+            content: Text('Printer not connected for this role'),
+            backgroundColor: Colors.red),
       );
       return;
     }
@@ -493,7 +520,6 @@ class _MyHomePageState extends State<MyHomePage> {
   // 🆕 BLUE THERMAL COMPAT DEMO (Receipt style, minimal migration example)
   // removed unused _compatReceiptDemo
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -502,205 +528,248 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: ListView(
-        children: PosPrinterRole.values.map((role) => Card(
-          margin: const EdgeInsets.all(8.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role.name.toUpperCase(),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    IconButton(
-                      tooltip: 'Force disconnect all (hot reload recovery)',
-                      icon: const Icon(Icons.power_settings_new),
-                      onPressed: () async {
-                        await printer.forceDisconnectAllBluetooth();
-                        await printer.resyncConnections();
-                      },
-                    ),
-                    Expanded(
-                      child: DropdownButton<PrinterType>(
-                        value: _selectedType[role],
-                        items: PrinterType.values.map((type) => 
-                          DropdownMenuItem(
-                            value: type,
-                            child: Text(type.name),
-                          ),
-                        ).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedType[role] = value!;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // live status dot
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: _isConnected[role] == true ? Colors.green : Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // 🆕 Connect/Disconnect Button dengan Loading
-                    _isConnected[role] == true
-                        ? ElevatedButton.icon(
-                            onPressed: _isDisconnecting[role] == true ? null : () => _disconnectPrinter(role),
-                            icon: _isDisconnecting[role] == true 
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.bluetooth_disabled),
-                            label: Text(_isDisconnecting[role] == true ? 'Disconnecting...' : 'Disconnect'),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                          )
-                        : ElevatedButton.icon(
-                            onPressed: _isConnecting[role] == true || 
-                                      (_selectedType[role] == PrinterType.bluetooth && _selectedDeviceId[role] == null) ||
-                                      (_selectedType[role] == PrinterType.tcp && _ipControllers[role]!.text.isEmpty)
-                                ? null 
-                                : () => _connectPrinter(role),
-                            icon: _isConnecting[role] == true 
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.bluetooth_connected),
-                            label: Text(_isConnecting[role] == true ? 'Connecting...' : 'Connect'),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                          ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_selectedType[role] == PrinterType.bluetooth) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isScanning ? null : _scanBluetoothDevices,
-                          icon: _isScanning 
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.bluetooth_searching),
-                          label: Text(_isScanning ? 'Scanning...' : 'Scan Bluetooth'),
+        children: PosPrinterRole.values
+            .map((role) => Card(
+                  margin: const EdgeInsets.all(8.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          role.name.toUpperCase(),
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButton<String>(
-                    isExpanded: true,
-                    hint: const Text('Select Bluetooth device'),
-                    // Make safe: if selected id is no longer in the list, show null
-                    value: _bluetoothDevices.any((d) => d.id == _selectedDeviceId[role])
-                        ? _selectedDeviceId[role]
-                        : (_selectedDeviceId[role] == null ? null : _selectedDeviceId[role]),
-                    items: () {
-                      final items = _bluetoothDevices
-                          .map((device) => DropdownMenuItem(
-                                value: device.id,
-                                child: Text('${device.name} (${device.id})'),
-                              ))
-                          .toList();
-                      final sel = _selectedDeviceId[role];
-                      if (sel != null && !_bluetoothDevices.any((d) => d.id == sel)) {
-                        // Include a placeholder for the saved device so it's visible/selectable
-                        items.insert(
-                          0,
-                          DropdownMenuItem(
-                            value: sel,
-                            child: Text('Saved device ($sel)'),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            IconButton(
+                              tooltip:
+                                  'Force disconnect all (hot reload recovery)',
+                              icon: const Icon(Icons.power_settings_new),
+                              onPressed: () async {
+                                await printer.forceDisconnectAllBluetooth();
+                                await printer.resyncConnections();
+                              },
+                            ),
+                            Expanded(
+                              child: DropdownButton<PrinterType>(
+                                value: _selectedType[role],
+                                items: PrinterType.values
+                                    .map(
+                                      (type) => DropdownMenuItem(
+                                        value: type,
+                                        child: Text(type.name),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedType[role] = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // live status dot
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: _isConnected[role] == true
+                                    ? Colors.green
+                                    : Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // 🆕 Connect/Disconnect Button dengan Loading
+                            _isConnected[role] == true
+                                ? ElevatedButton.icon(
+                                    onPressed: _isDisconnecting[role] == true
+                                        ? null
+                                        : () => _disconnectPrinter(role),
+                                    icon: _isDisconnecting[role] == true
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          )
+                                        : const Icon(Icons.bluetooth_disabled),
+                                    label: Text(_isDisconnecting[role] == true
+                                        ? 'Disconnecting...'
+                                        : 'Disconnect'),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red),
+                                  )
+                                : ElevatedButton.icon(
+                                    onPressed: _isConnecting[role] == true ||
+                                            (_selectedType[role] ==
+                                                    PrinterType.bluetooth &&
+                                                _selectedDeviceId[role] ==
+                                                    null) ||
+                                            (_selectedType[role] ==
+                                                    PrinterType.tcp &&
+                                                _ipControllers[role]!
+                                                    .text
+                                                    .isEmpty)
+                                        ? null
+                                        : () => _connectPrinter(role),
+                                    icon: _isConnecting[role] == true
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          )
+                                        : const Icon(Icons.bluetooth_connected),
+                                    label: Text(_isConnecting[role] == true
+                                        ? 'Connecting...'
+                                        : 'Connect'),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green),
+                                  ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_selectedType[role] == PrinterType.bluetooth) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _isScanning
+                                      ? null
+                                      : _scanBluetoothDevices,
+                                  icon: _isScanning
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        )
+                                      : const Icon(Icons.bluetooth_searching),
+                                  label: Text(_isScanning
+                                      ? 'Scanning...'
+                                      : 'Scan Bluetooth'),
+                                ),
+                              ),
+                            ],
                           ),
-                        );
-                      }
-                      return items;
-                    }(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedDeviceId[role] = value;
-                      });
-                    },
+                          const SizedBox(height: 8),
+                          DropdownButton<String>(
+                            isExpanded: true,
+                            hint: const Text('Select Bluetooth device'),
+                            // Make safe: if selected id is no longer in the list, show null
+                            value: _bluetoothDevices
+                                    .any((d) => d.id == _selectedDeviceId[role])
+                                ? _selectedDeviceId[role]
+                                : (_selectedDeviceId[role] == null
+                                    ? null
+                                    : _selectedDeviceId[role]),
+                            items: () {
+                              final items = _bluetoothDevices
+                                  .map((device) => DropdownMenuItem(
+                                        value: device.id,
+                                        child: Text(
+                                            '${device.name} (${device.id})'),
+                                      ))
+                                  .toList();
+                              final sel = _selectedDeviceId[role];
+                              if (sel != null &&
+                                  !_bluetoothDevices.any((d) => d.id == sel)) {
+                                // Include a placeholder for the saved device so it's visible/selectable
+                                items.insert(
+                                  0,
+                                  DropdownMenuItem(
+                                    value: sel,
+                                    child: Text('Saved device ($sel)'),
+                                  ),
+                                );
+                              }
+                              return items;
+                            }(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedDeviceId[role] = value;
+                              });
+                            },
+                          ),
+                        ],
+                        if (_selectedType[role] == PrinterType.tcp) ...[
+                          TextField(
+                            controller: _ipControllers[role],
+                            decoration:
+                                const InputDecoration(labelText: 'IP Address'),
+                          ),
+                          TextField(
+                            controller: _portControllers[role],
+                            decoration:
+                                const InputDecoration(labelText: 'Port'),
+                          ),
+                        ],
+                        Wrap(
+                          spacing: 8.0,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => _checkPrinter(role),
+                              child: const Text('Check Status'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _openDrawer(role),
+                              child: const Text('Open Drawer'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _testRaw(role),
+                              child: const Text('Test Raw'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _printBeverageStickers(role),
+                              child: const Text('beverages'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  _printCompatFinishedTransaction(role),
+                              child: const Text('Compat Full Tx 56mm'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _diagnoseCashier(role),
+                              child: const Text('Diagnostic Receipt'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () =>
+                                  setState(() => _showLogs = !_showLogs),
+                              child:
+                                  Text(_showLogs ? 'Hide Logs' : 'Show Logs'),
+                            ),
+                          ],
+                        ),
+                        if (_showLogs) ...[
+                          const SizedBox(height: 12),
+                          Text('Logs (${printer.logs.length})',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold)),
+                          Container(
+                            constraints: const BoxConstraints(maxHeight: 180),
+                            padding: const EdgeInsets.all(8),
+                            color: Colors.black12,
+                            child: SingleChildScrollView(
+                              child: Text(
+                                printer.logs
+                                    .map(
+                                        (e) => '[${e.level.name}] ${e.message}')
+                                    .join('\n'),
+                                style: const TextStyle(
+                                    fontFamily: 'monospace', fontSize: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ],
-                if (_selectedType[role] == PrinterType.tcp) ...[
-                  TextField(
-                    controller: _ipControllers[role],
-                    decoration: const InputDecoration(labelText: 'IP Address'),
-                  ),
-                  TextField(
-                    controller: _portControllers[role],
-                    decoration: const InputDecoration(labelText: 'Port'),
-                  ),
-                ],
-              
-        
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _checkPrinter(role),
-                      child: const Text('Check Status'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _openDrawer(role),
-                      child: const Text('Open Drawer'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testRaw(role),
-                      child: const Text('Test Raw'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _printBeverageStickers(role),
-                      child: const Text('beverages'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _printCompatFinishedTransaction(role),
-                      child: const Text('Compat Full Tx 56mm'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _diagnoseCashier(role),
-                      child: const Text('Diagnostic Receipt'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => setState(() => _showLogs = !_showLogs),
-                      child: Text(_showLogs ? 'Hide Logs' : 'Show Logs'),
-                    ),
-                  ],
-                ),
-                if (_showLogs) ...[
-                  const SizedBox(height: 12),
-                  Text('Logs (${printer.logs.length})', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 180),
-                    padding: const EdgeInsets.all(8),
-                    color: Colors.black12,
-                    child: SingleChildScrollView(
-                      child: Text(
-                        printer.logs.map((e) => '[${e.level.name}] ${e.message}').join('\n'),
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        )).toList(),
+                ))
+            .toList(),
       ),
     );
   }
@@ -715,12 +784,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
     super.dispose();
   }
-  
-
-
-
-
-
 
   // 🥤 Print 3 beverage stickers (one by one) using BeverageStickerPrinter
   Future<void> _printBeverageStickers(PosPrinterRole role) async {
@@ -733,16 +796,15 @@ class _MyHomePageState extends State<MyHomePage> {
       print('No beverage lines detected for sticker printing');
       return;
     }
-  final bevPrinter = BeverageStickerPrinter(
-    customerName: tx.customerName,
-    detailsCharBudget: 100, // test: allow more chars to see wrapping behavior
-    detailsJoinSeparator: ', ', // add comma separator between items
-    detailsWrapWidthChars: 24, // reduce by 1 char to avoid right edge
-    detailsMaxLines: 3, // limit details block to maximum 3 lines
-    autoGrowHeight: true, // show all trimmed content across lines
-    debugLog: true, // enable debug to see char count in console
-  );
+    final bevPrinter = BeverageStickerPrinter(
+      customerName: tx.customerName,
+      detailsCharBudget: 100, // test: allow more chars to see wrapping behavior
+      detailsJoinSeparator: ', ', // add comma separator between items
+      detailsWrapWidthChars: 24, // reduce by 1 char to avoid right edge
+      detailsMaxLines: 3, // limit details block to maximum 3 lines
+      autoGrowHeight: true, // show all trimmed content across lines
+      debugLog: true, // enable debug to see char count in console
+    );
     await bevPrinter.printBeverageLines(beverageLines, role: role);
   }
-
 }
