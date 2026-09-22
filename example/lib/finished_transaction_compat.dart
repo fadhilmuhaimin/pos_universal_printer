@@ -1,3 +1,5 @@
+import 'package:http/http.dart' as http;
+import 'dart:typed_data';
 import 'package:pos_universal_printer/pos_universal_printer.dart';
 import 'demo_transaction_data.dart';
 // Image handling removed; now handled internally by BlueThermalCompatPrinter
@@ -15,12 +17,14 @@ class FinishedTransactionCompatPrinter {
   FinishedTransactionCompatPrinter({
     this.is80mm = false,
     this.logoAssetPath,
+    this.logoNetworkUrl,
     this.logoThreshold = 160,
     this.logoMaxWidth, // override auto width; if null we pick based on paper
   });
 
   final bool is80mm; // false => 56/58mm (32 cols), true => 80mm (48 cols)
   final String? logoAssetPath; // optional path to logo asset (handled in compat layer)
+  final String? logoNetworkUrl; // optional network url for logo
   final int logoThreshold; // luminance threshold 0-255
   final int? logoMaxWidth; // manual max width in dots (overrides paper default)
 
@@ -78,6 +82,24 @@ class FinishedTransactionCompatPrinter {
     lines.add(CompatLine(_composeLeftRight('Total:', _formatCurrency(total)), Size.boldLarge.val, Align.left.val));
     lines.add(CompatLine('', Size.normal.val, Align.left.val));
     lines.add(CompatLine('Terima Kasih :)', Size.bold.val, Align.center.val));
+
+    // If a network URL is provided, fetch and print it
+    if (logoNetworkUrl != null && logoNetworkUrl!.isNotEmpty) {
+      try {
+        final response = await http.get(Uri.parse(logoNetworkUrl!));
+        if (response.statusCode == 200) {
+          final Uint8List bytes = response.bodyBytes;
+          await _compat.printImageBytes(
+            bytes,
+            preferBitImage: true,
+            threshold: logoThreshold,
+            center: true,
+          );
+        }
+      } catch (e) {
+        // ignore network error
+      }
+    }
 
     await _compat.printLogoAndLines(
       assetLogoPath: logoAssetPath,
