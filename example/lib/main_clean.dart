@@ -71,7 +71,7 @@ class _MyHomePageState extends State<MyHomePage> {
         port: port,
       );
     }
-    
+
     if (device != null) {
       await printer.registerDevice(role, device);
     }
@@ -99,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
       printer: printer,
       role: role,
       productName: 'KOPI ARABICA',
-      productCode: 'KA001', 
+      productCode: 'KA001',
       price: 'Rp 35.000',
       barcodeData: '1234567890',
     );
@@ -121,11 +121,11 @@ class _MyHomePageState extends State<MyHomePage> {
     CustomStickerPrinter.printSticker(
       printer: printer,
       role: role,
-      width: 40,          // mm - sesuaikan dengan media Anda
-      height: 30,         // mm - sesuaikan dengan media Anda
-      gap: 3,             // mm - gap antar label
-      marginLeft: 8,      // mm - margin kiri
-      marginTop: 2,       // mm - margin atas
+      width: 40, // mm - sesuaikan dengan media Anda
+      height: 30, // mm - sesuaikan dengan media Anda
+      gap: 3, // mm - gap antar label
+      marginLeft: 8, // mm - margin kiri
+      marginTop: 2, // mm - margin atas
       texts: [
         StickerText('CUSTOM STICKER', x: 0, y: 0, font: 3, size: 1),
         StickerText('Teks Anda', x: 0, y: 8, font: 2, size: 1),
@@ -140,11 +140,11 @@ class _MyHomePageState extends State<MyHomePage> {
     CustomStickerPrinter.printSticker(
       printer: printer,
       role: role,
-      width: 40,          // mm - sesuaikan dengan media Anda
-      height: 30,         // mm - sesuaikan dengan media Anda
-      gap: 3,             // mm - gap antar label
-      marginLeft: 8,      // mm - margin kiri
-      marginTop: 2,       // mm - margin atas
+      width: 40, // mm - sesuaikan dengan media Anda
+      height: 30, // mm - sesuaikan dengan media Anda
+      gap: 3, // mm - gap antar label
+      marginLeft: 8, // mm - margin kiri
+      marginTop: 2, // mm - margin atas
       texts: [
         StickerText('STICKER FIXED', x: 0, y: 0, font: 3, size: 1),
         StickerText('Normal orientation', x: 0, y: 8, font: 2, size: 1),
@@ -162,12 +162,14 @@ class _MyHomePageState extends State<MyHomePage> {
       width: 40,
       height: 30,
       gap: 3,
-      marginLeft: 8,      // margin kiri lebih kecil
-      marginTop: 1,       // margin atas lebih kecil
+      marginLeft: 8, // margin kiri lebih kecil
+      marginTop: 1, // margin atas lebih kecil
       texts: [
-        StickerText('BIG TEXT DARI LAHIR', x: 0, y: 0, font: 4, size: 2),       // text besar
-        StickerText('Medium', x: 0, y: 10, font: 3, size: 1),        // text sedang
-        StickerText('Small text here', x: 0, y: 18, font: 1, size: 1), // text kecil
+        StickerText('BIG TEXT DARI LAHIR',
+            x: 0, y: 0, font: 4, size: 2), // text besar
+        StickerText('Medium', x: 0, y: 10, font: 3, size: 1), // text sedang
+        StickerText('Small text here',
+            x: 0, y: 18, font: 1, size: 1), // text kecil
       ],
     );
   }
@@ -209,141 +211,154 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: ListView(
-        children: PosPrinterRole.values.map((role) => Card(
-          margin: const EdgeInsets.all(8.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  role.name.toUpperCase(),
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButton<PrinterType>(
-                        value: _selectedType[role],
-                        items: PrinterType.values.map((type) => 
-                          DropdownMenuItem(
-                            value: type,
-                            child: Text(type.name),
-                          ),
-                        ).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedType[role] = value!;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () => _register(role),
-                      child: const Text('Register'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (_selectedType[role] == PrinterType.bluetooth) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _scanBluetooth,
-                          child: const Text('Scan Bluetooth'),
+        children: PosPrinterRole.values
+            .map((role) => Card(
+                  margin: const EdgeInsets.all(8.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          role.name.toUpperCase(),
+                          style: Theme.of(context).textTheme.headlineSmall,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButton<PrinterType>(
+                                value: _selectedType[role],
+                                items: PrinterType.values
+                                    .map(
+                                      (type) => DropdownMenuItem(
+                                        value: type,
+                                        child: Text(type.name),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedType[role] = value!;
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton(
+                              onPressed: () => _register(role),
+                              child: const Text('Register'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_selectedType[role] == PrinterType.bluetooth) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _scanBluetooth,
+                                  child: const Text('Scan Bluetooth'),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButton<String>(
+                            value: _selectedDeviceId[role],
+                            items: _bluetoothDevices
+                                .map((device) => DropdownMenuItem(
+                                      value: device.id,
+                                      child:
+                                          Text('${device.name} (${device.id})'),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedDeviceId[role] = value;
+                              });
+                            },
+                          ),
+                        ],
+                        if (_selectedType[role] == PrinterType.tcp) ...[
+                          TextField(
+                            controller: _ipControllers[role],
+                            decoration:
+                                const InputDecoration(labelText: 'IP Address'),
+                          ),
+                          TextField(
+                            controller: _portControllers[role],
+                            decoration:
+                                const InputDecoration(labelText: 'Port'),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        const Text('🏷️ TEMPLATE STICKER SIAP PAKAI:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green)),
+                        Wrap(
+                          spacing: 8.0,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => _testProductTemplate(role),
+                              child: const Text('Product 40x30'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _testAddressTemplate(role),
+                              child: const Text('Address 58x40'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('🎯 CUSTOM STICKER TESTS:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue)),
+                        Wrap(
+                          spacing: 8.0,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => _myCustomSticker(role),
+                              child: const Text('My Custom'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _testTsplFixed(role),
+                              child: const Text('Fixed 40x30'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _testCustomSize(role),
+                              child: const Text('Different Sizes'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _testMultiLine(role),
+                              child: const Text('Multi Line'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('⚙️ OTHER FUNCTIONS:',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange)),
+                        Wrap(
+                          spacing: 8.0,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () => _openDrawer(role),
+                              child: const Text('Open Drawer'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => _testRaw(role),
+                              child: const Text('Test Raw'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 8),
-                  DropdownButton<String>(
-                    value: _selectedDeviceId[role],
-                    items: _bluetoothDevices
-                        .map((device) => DropdownMenuItem(
-                              value: device.id,
-                              child: Text('${device.name} (${device.id})'),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedDeviceId[role] = value;
-                      });
-                    },
-                  ),
-                ],
-                if (_selectedType[role] == PrinterType.tcp) ...[
-                  TextField(
-                    controller: _ipControllers[role],
-                    decoration: const InputDecoration(labelText: 'IP Address'),
-                  ),
-                  TextField(
-                    controller: _portControllers[role],
-                    decoration: const InputDecoration(labelText: 'Port'),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                const Text('🏷️ TEMPLATE STICKER SIAP PAKAI:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _testProductTemplate(role),
-                      child: const Text('Product 40x30'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testAddressTemplate(role),
-                      child: const Text('Address 58x40'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('🎯 CUSTOM STICKER TESTS:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _myCustomSticker(role),
-                      child: const Text('My Custom'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testTsplFixed(role),
-                      child: const Text('Fixed 40x30'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testCustomSize(role),
-                      child: const Text('Different Sizes'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testMultiLine(role),
-                      child: const Text('Multi Line'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Text('⚙️ OTHER FUNCTIONS:', 
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
-                Wrap(
-                  spacing: 8.0,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _openDrawer(role),
-                      child: const Text('Open Drawer'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () => _testRaw(role),
-                      child: const Text('Test Raw'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        )).toList(),
+                ))
+            .toList(),
       ),
     );
   }

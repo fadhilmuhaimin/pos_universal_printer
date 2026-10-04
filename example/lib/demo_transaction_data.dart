@@ -23,14 +23,16 @@ class ProductModelDemo {
 }
 
 class SelectedVariantDemo {
-  SelectedVariantDemo({required this.id, required this.name, required this.price});
+  SelectedVariantDemo(
+      {required this.id, required this.name, required this.price});
   final int id;
   final String name;
   final int price;
 }
 
 class SelectedAdditionDemo {
-  SelectedAdditionDemo({required this.id, required this.name, required this.price});
+  SelectedAdditionDemo(
+      {required this.id, required this.name, required this.price});
   final int id;
   final String name;
   final int price;
@@ -62,7 +64,7 @@ class FullTransactionDemo {
     required this.orderType,
   });
   final List<TransactionLineDemo> transactions;
-  final double discount; 
+  final double discount;
   final double tax;
   final VoucherData? voucher;
   final String customerName;
@@ -94,7 +96,8 @@ FullTransactionDemo sample56mmTransaction() {
           SelectedVariantDemo(id: 26, name: 'Normal', price: 0),
         ],
         selectedAdditions: [
-          SelectedAdditionDemo(id: 14, name: 'Sambel Mata Spesial', price: 4000),
+          SelectedAdditionDemo(
+              id: 14, name: 'Sambel Mata Spesial', price: 4000),
         ],
         notes: '',
       ),
@@ -176,7 +179,6 @@ List<TransactionLineDemo> sampleBeverageLines() {
       ],
       notes: 'Pisah Ketupat',
     ),
-  
   ];
 }
 
