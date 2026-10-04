@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.11
+
+### Reliable WiFi/LAN (TCP) printing
+- TCP printers now use a connection per job (connect, write, flush, close) instead of a long-lived socket. Fixes prints lost on half-open connections and orphan auto-reconnects that blocked single-connection WiFi printers.
+- Jobs and reachability probes are serialized per printer; connect retries with a short backoff (WiFi modules waking from power saving).
+- `isRoleConnected` now reflects real TCP reachability; a background probe restores the state once the printer is reachable again.
+- Clearer TCP error messages (without the misleading local port from `SocketException`).
+
+### New API
+- `printRawAndWait` / `printEscPosAndWait`: complete once the data is delivered and throw on failure (useful for test prints).
+- `BlueThermalCompatPrinter.printImageBytesAndLines`: print a network logo and text lines in a single ESC/POS job.
+
+### Dependencies
+- Requires `pos_universal_printer_android` ^0.1.1 (Bluetooth connection fallback for label/sticker printers).
+
 ## 0.2.10
 
 ### Federated install quality of life

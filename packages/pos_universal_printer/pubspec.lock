@@ -383,10 +383,10 @@ packages:
     dependency: "direct main"
     description:
       name: pos_universal_printer_android
-      sha256: c0fd9f58efa6217cfc7887b092123bcff15fd8322c9f12d629c1435069acf26d
+      sha256: "98620d9189941ec818394a7e247ad20041c9feb82d4396d1e3f1778843844e03"
       url: "https://pub.dev"
     source: hosted
-    version: "0.1.0"
+    version: "0.1.1"
   pos_universal_printer_ios:
     dependency: "direct main"
     description:
