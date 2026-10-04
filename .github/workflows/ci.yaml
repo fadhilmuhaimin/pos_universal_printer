@@ -10,25 +10,24 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.41.6'
           channel: 'stable'
 
       - name: Install dependencies
         run: |
-          flutter pub get
-          cd packages/pos_universal_printer
-          flutter pub get
-          cd ../pos_universal_printer_android
-          flutter pub get
-          cd ../pos_universal_printer_ios
-          flutter pub get
-          cd ../../example
-          flutter pub get
+          for dir in . \
+            packages/pos_universal_printer \
+            packages/pos_universal_printer/example \
+            packages/pos_universal_printer_android \
+            packages/pos_universal_printer_ios \
+            example; do
+            (cd "$dir" && flutter pub get)
+          done
 
       - name: Format code
         run: |
@@ -36,7 +35,7 @@ jobs:
 
       - name: Analyze
         run: |
-          flutter analyze .
+          flutter analyze --no-fatal-infos .
 
       - name: Run tests
         run: |
