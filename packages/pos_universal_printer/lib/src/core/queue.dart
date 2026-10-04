@@ -4,13 +4,20 @@ import 'logging.dart';
 
 /// Represents a unit of work to be processed by [JobQueue].
 class PrintJob {
-  PrintJob(this.description, this.action);
+  PrintJob(this.description, this.action, {this.maxRetries, this.completer});
 
   /// A human friendly description of the job.
   final String description;
 
   /// The function that performs the job.
   final Future<void> Function() action;
+
+  /// Overrides [JobQueue.maxRetries] for this job when set.
+  final int? maxRetries;
+
+  /// Completed when the job succeeds, or with the last error when it is
+  /// dropped after exhausting its retries.
+  final Completer<void>? completer;
 }
 
 /// Simple queue that processes print jobs sequentially with basic retry
@@ -48,14 +55,16 @@ class JobQueue {
         try {
           logger.add(LogLevel.debug, 'Running job: ${job.description}');
           await job.action();
+          job.completer?.complete();
           break;
         } catch (e) {
           attempt++;
           logger.add(LogLevel.error,
               'Job "${job.description}" failed (attempt $attempt): $e');
-          if (attempt > maxRetries) {
+          if (attempt > (job.maxRetries ?? maxRetries)) {
             logger.add(LogLevel.error,
                 'Job "${job.description}" exceeded max retries, dropping');
+            job.completer?.completeError(e);
             break;
           }
           // Exponential backoff: 500ms * 2^(attempt-1)

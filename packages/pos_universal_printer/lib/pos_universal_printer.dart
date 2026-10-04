@@ -147,6 +147,21 @@ class PosUniversalPrinter {
     printRaw(role, bytes);
   }
 
+  /// Sends raw bytes and completes once delivered to the printer. Throws when
+  /// delivery fails (after [maxRetries] queue retries), e.g. for test prints
+  /// that must report the real result.
+  Future<void> printRawAndWait(PosPrinterRole role, List<int> data,
+      {int maxRetries = 0}) {
+    return _manager.sendAndWait(role, data, maxRetries: maxRetries);
+  }
+
+  /// [printEscPos] variant that completes once delivered (see
+  /// [printRawAndWait]).
+  Future<void> printEscPosAndWait(PosPrinterRole role, EscPosBuilder builder,
+      {int maxRetries = 0}) {
+    return printRawAndWait(role, builder.build(), maxRetries: maxRetries);
+  }
+
   /// Sends a TSPL command string directly to the printer configured for
   /// [role]. Converts the string to ASCII before sending.
   void printTspl(PosPrinterRole role, String commands) {
