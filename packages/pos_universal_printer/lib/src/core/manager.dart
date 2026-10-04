@@ -218,8 +218,10 @@ class PosPrinterManager {
           ));
         },
       );
-      await tcp.connect();
       conn.tcpClient = tcp;
+      // Reachability probe; TcpClient keeps probing in the background while
+      // the printer is unreachable.
+      await tcp.connect();
     } else if (device.type == PrinterType.bluetooth) {
       try {
         // If native already has an open socket (e.g., after hot reload), adopt it instead of reconnecting.
@@ -291,10 +293,27 @@ class PosPrinterManager {
   /// be enqueued in the job queue, ensuring sequential processing and
   /// retries.
   void send(PosPrinterRole role, List<int> data) {
+    _enqueue(role, data);
+  }
+
+  /// Like [send] but completes when the data has been delivered, or throws
+  /// the last error once [maxRetries] retries are exhausted.
+  Future<void> sendAndWait(PosPrinterRole role, List<int> data,
+      {int maxRetries = 0}) {
+    final completer = Completer<void>();
+    if (!_enqueue(role, data, maxRetries: maxRetries, completer: completer)) {
+      completer.completeError(
+          StateError('Printer untuk role ${role.name} belum diatur'));
+    }
+    return completer.future;
+  }
+
+  bool _enqueue(PosPrinterRole role, List<int> data,
+      {int? maxRetries, Completer<void>? completer}) {
     final conn = _connections[role];
     if (conn == null) {
       logger.add(LogLevel.error, 'No printer configured for role $role');
-      return;
+      return false;
     }
     final job = PrintJob('Send to $role', () async {
       if (conn.device.type == PrinterType.tcp) {
@@ -394,8 +413,9 @@ class PosPrinterManager {
           throw Exception('Bluetooth write failed after reconnect');
         }
       }
-    });
+    }, maxRetries: maxRetries, completer: completer);
     jobQueue.addJob(job);
+    return true;
   }
 
   /// Disconnects and clears all devices.
@@ -425,11 +445,8 @@ class PosPrinterManager {
     final conn = _connections[role];
     if (conn == null) return false;
     if (conn.device.type == PrinterType.tcp) {
-      // If a TcpClient exists, consider it connected when socket is not null.
-      // TcpClient doesn't expose socket directly; rely on last published event cache.
-      // For simplicity, infer via throughput>0 or assume connect() succeeded.
-      // Better: maintain explicit flag if needed. Here we treat non-null client as connected.
-      return conn.tcpClient != null;
+      // Last known reachability (probe or print job) of the network printer.
+      return conn.tcpClient?.isConnected ?? false;
     } else {
       return conn.bluetoothConnected;
     }
