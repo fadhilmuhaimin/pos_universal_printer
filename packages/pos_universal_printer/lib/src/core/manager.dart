@@ -301,8 +301,7 @@ class PosPrinterManager {
   Future<void> sendAndWait(PosPrinterRole role, List<int> data,
       {int maxRetries = 0}) {
     final completer = Completer<void>();
-    if (!_enqueue(role, data,
-        maxRetries: maxRetries, completer: completer)) {
+    if (!_enqueue(role, data, maxRetries: maxRetries, completer: completer)) {
       completer.completeError(
           StateError('Printer untuk role ${role.name} belum diatur'));
     }

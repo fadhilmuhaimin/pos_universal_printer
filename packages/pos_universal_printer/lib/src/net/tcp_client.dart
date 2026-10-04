@@ -169,8 +169,11 @@ class TcpClient {
     }
     if (_connected == value) return;
     _connected = value;
-    logger.add(value ? LogLevel.info : LogLevel.warning,
-        value ? 'Printer $host:$port reachable' : 'Printer $host:$port unreachable');
+    logger.add(
+        value ? LogLevel.info : LogLevel.warning,
+        value
+            ? 'Printer $host:$port reachable'
+            : 'Printer $host:$port unreachable');
     try {
       onConnectionChanged?.call(value);
     } catch (_) {}
@@ -189,12 +192,15 @@ class TcpClient {
   static String _describe(Object e) {
     if (e is SocketException) {
       final os = e.osError;
-      final msg = (os != null && os.message.isNotEmpty) ? os.message : e.message;
+      final msg =
+          (os != null && os.message.isNotEmpty) ? os.message : e.message;
       final code = os?.errorCode;
       if (code == 111 || code == 61 || msg.contains('refused')) {
         return 'koneksi ditolak printer (port sibuk/salah)';
       }
-      if (code == 110 || code == 60 || msg.toLowerCase().contains('timed out')) {
+      if (code == 110 ||
+          code == 60 ||
+          msg.toLowerCase().contains('timed out')) {
         return 'printer tidak merespons (timeout)';
       }
       if (code == 113 || code == 65 || code == 101 || code == 51) {

@@ -5,7 +5,8 @@ import 'package:pos_universal_printer/src/core/logging.dart';
 import 'package:pos_universal_printer/src/net/tcp_client.dart';
 
 /// Fake WiFi printer: accepts one connection at a time and records payloads.
-Future<(ServerSocket, List<List<int>>, List<int>)> fakePrinter([int port = 0]) async {
+Future<(ServerSocket, List<List<int>>, List<int>)> fakePrinter(
+    [int port = 0]) async {
   final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
   final jobs = <List<int>>[];
   final active = <int>[0, 0]; // [current, max concurrent]
@@ -28,9 +29,17 @@ void main() {
     final c = TcpClient('127.0.0.1', server.port, Logger());
     expect(await c.connect(), isTrue);
     expect(c.isConnected, isTrue);
-    await Future.wait([c.send([1, 2, 3]), c.send([4, 5]), c.send([6])]);
+    await Future.wait([
+      c.send([1, 2, 3]),
+      c.send([4, 5]),
+      c.send([6])
+    ]);
     await Future.delayed(const Duration(milliseconds: 200));
-    expect(jobs, [[1, 2, 3], [4, 5], [6]]);
+    expect(jobs, [
+      [1, 2, 3],
+      [4, 5],
+      [6]
+    ]);
     expect(active[1], 1);
     await c.close();
     await server.close();
@@ -54,7 +63,9 @@ void main() {
     expect(events.last, isTrue);
     await c.send([9]);
     await Future.delayed(const Duration(milliseconds: 200));
-    expect(jobs, [[9]]);
+    expect(jobs, [
+      [9]
+    ]);
     await c.close();
     expect(c.isConnected, isFalse);
     await server.close();
