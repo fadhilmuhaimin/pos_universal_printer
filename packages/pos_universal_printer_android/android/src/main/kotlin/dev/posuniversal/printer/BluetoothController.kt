@@ -45,17 +45,57 @@ class BluetoothController(private val context: Context) {
      */
     suspend fun connect(address: String): Boolean = withContext(Dispatchers.IO) {
         val btAdapter = adapter ?: return@withContext false
-        val device = btAdapter.getRemoteDevice(address) ?: return@withContext false
-        return@withContext try {
-            val socket = device.createRfcommSocketToServiceRecord(uuid)
-            @Suppress("MissingPermission")
-            btAdapter.cancelDiscovery()
-            socket.connect()
-            sockets[address] = socket
-            true
-        } catch (e: IOException) {
-            Log.e("BluetoothController", "Error connecting to $address", e)
-            false
+        val device = try {
+            btAdapter.getRemoteDevice(address)
+        } catch (e: IllegalArgumentException) {
+            Log.e("BluetoothController", "Invalid address $address", e)
+            return@withContext false
+        }
+
+        // Drop any stale socket for this device before opening a new one.
+        sockets.remove(address)?.let { closeQuietly(it) }
+
+        @Suppress("MissingPermission")
+        btAdapter.cancelDiscovery()
+
+        // Many label/sticker printers reject the default secure SDP connection
+        // from a host whose pairing key they no longer hold (they remember a
+        // single host) or have a broken SDP record. Fall back to insecure RFCOMM
+        // and a direct channel 1 connection before giving up.
+        val strategies: List<Pair<String, () -> BluetoothSocket>> = listOf(
+            "secure" to { device.createRfcommSocketToServiceRecord(uuid) },
+            "insecure" to { device.createInsecureRfcommSocketToServiceRecord(uuid) },
+            "channel1" to { reflectSocket(device, "createRfcommSocket") },
+            "insecureChannel1" to { reflectSocket(device, "createInsecureRfcommSocket") },
+        )
+        for ((name, create) in strategies) {
+            var socket: BluetoothSocket? = null
+            try {
+                socket = create()
+                socket.connect()
+                sockets[address] = socket
+                Log.i("BluetoothController", "Connected to $address via $name")
+                return@withContext true
+            } catch (e: Exception) {
+                Log.w("BluetoothController", "Connect $address via $name failed: ${e.message}")
+                socket?.let { closeQuietly(it) }
+                // Give the printer's Bluetooth stack a moment before next try.
+                Thread.sleep(300)
+            }
+        }
+        Log.e("BluetoothController", "All connection strategies failed for $address")
+        false
+    }
+
+    private fun reflectSocket(device: BluetoothDevice, method: String): BluetoothSocket {
+        val m = device.javaClass.getMethod(method, Int::class.javaPrimitiveType)
+        return m.invoke(device, 1) as BluetoothSocket
+    }
+
+    private fun closeQuietly(socket: BluetoothSocket) {
+        try {
+            socket.close()
+        } catch (_: IOException) {
         }
     }
 
